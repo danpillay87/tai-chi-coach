@@ -76,6 +76,8 @@
     background: rgba(255,255,255,0.08); overflow: hidden; }
   #holdfill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accentd), var(--accent));
     transition: width .1s linear; }
+  #diag { margin-top: 8px; font-size: 11px; letter-spacing: .04em; color: var(--muted);
+    background: rgba(20,13,6,0.55); padding: 4px 10px; border-radius: 8px; font-family: ui-monospace, monospace; }
 
   /* Controls */
   #controls { display: flex; gap: 10px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
@@ -157,6 +159,7 @@
       <div id="cuewrap">
         <div id="cue">Press Start</div>
         <div id="holdbar"><div id="holdfill"></div></div>
+        <div id="diag">v0.3 · idle</div>
       </div>
     </div>
 
@@ -288,6 +291,9 @@ const ringPct = document.getElementById("ringPct");
 const targetName = document.getElementById("targetName");
 const holdfill = document.getElementById("holdfill");
 const countdown = document.getElementById("countdown");
+const diagEl = document.getElementById("diag");
+const VERSION = "v0.3";
+function setDiag(t){ if (diagEl) diagEl.textContent = VERSION + " · " + t; }
 
 // ---------------------------------------------------------------------------
 //  State
@@ -642,6 +648,7 @@ function loop() {
       if (art) drawTargetArt(art, false, null);        // show the master even before a pose locks
       setCue(art ? "Copy the master — stand back so your whole body fits the frame"
                  : "Step back — get your whole body in frame", "");
+      setDiag("cam ✓ · no full body yet · master " + (ref ? (art ? "shown" : "loading…") : "none"));
       setMatch(null);
     }
   }
@@ -673,6 +680,7 @@ function processPose(lm) {
   if (S.burst != null) { const bp = (performance.now() - S.burst) / BURST_MS; if (bp <= 1) drawBurst(bp, lm); else S.burst = null; }
 
   setMatch(match);
+  setDiag("tracking ✓ · master " + (art ? "shown" : "ghost") + " · match " + match + "%");
 
   // hold logic: still + good match -> accrue hold time
   const still = S.vel < CFG.STILL_VEL;
@@ -829,9 +837,11 @@ const wait = (ms) => new Promise(r=>setTimeout(r,ms));
 // ---------------------------------------------------------------------------
 async function start() {
   startBtn.disabled = true;
+  setDiag("loading model + camera…");
   try { if (!S.poseLandmarker) await loadModel(); await startCamera(); }
-  catch { startBtn.disabled=false; startBtn.textContent="Start"; return; }
+  catch { startBtn.disabled=false; startBtn.textContent="Start"; setDiag("start failed — see message"); return; }
   hideOverlay();
+  setDiag("camera on — waiting for video…");
   S.running = true; S.holdT = 0; S.lastAchieved = -1; S.prevCentroid = null; S.burst = null;
   startBtn.textContent = "Stop"; startBtn.classList.add("stop"); startBtn.disabled = false;
   lastVideoTime = -1;
