@@ -8,13 +8,15 @@ timer that celebrates when you nail it.
 Forked from **GHOST** (the rowing coach) — it reuses GHOST's proven, fully
 on-device MediaPipe pose pipeline and numbers-only privacy model.
 
-**Art direction: "Ink Flow + Ki-Surge burst".** Painterly-anime calm while you
-practise — a cream, brush-outlined figure with a jade glow (gold when you're on
-target), on a deep-jade ground with slow chi ink-ribbons drifting behind. Then,
-the moment you *complete* a hold, a Dragon-Ball-Z-style energy burst fires (gold
-+ electric-blue core flash, expanding rings, rising sparks). Calm to practise,
-with a payoff at the reward moment. (Chosen from a 4-way mock-up pitch — see the
-art-direction artifact.) The new part is a **posture-hold engine** (instead of
+**Art direction: "Sumi Panda".** Warm painterly concept-art world (Kung-Fu-Panda
+development-art feel). The posture you copy is shown as a **painted panda master**
+(transparent cut-out in `art/`, one per posture) that scales to your body; *you*
+are a glowing, translucent **chi body** rendered from your live pose (warm cream,
+gold glow, turning warm-red on the off limb) so the master reads through you. Deep
+ochre ground, drifting sumi ink-washes, serif HUD. Completing a hold fires a warm
+gold energy burst. (Chosen after iterating mock-ups — the panda art is generated
+key-art, background-removed; see `art-v2.html`/`hero.html` and `refs/` for the
+design trail.) The new part is a **posture-hold engine** (instead of
 rowing stroke segmentation) and a **full-body frontal skeleton** (instead of the
 side-on 6-joint view).
 

@@ -18,18 +18,18 @@
    *  localStorage, clearable in the menu.
    * ========================================================================= */
   :root {
-    /* Ink Flow — painterly-anime calm: deep jade ground, cream figure, jade+gold chi. */
-    --bg:      #08120d;
-    --bg2:     #0f1c16;
-    --ink:     #f3ecd9;      /* cream */
-    --muted:   #9fc7b3;      /* soft jade-grey */
-    --accent:  #4fe0b0;      /* jade -- the ghost / good */
-    --accentd: #35d9a0;
-    --gold:    #e8c07a;      /* chi gold */
-    --amber:   #f0a25f;      /* off -- correcting (warm) */
-    --red:     #e8886a;      /* far off */
-    --panel:   rgba(11,23,18,0.82);
-    --line:    rgba(120,215,170,0.18);
+    /* Sumi Panda — warm painterly concept-art world: ochre parchment, ink, gold. */
+    --bg:      #1c130a;
+    --bg2:     #2a1e12;
+    --ink:     #f4e7cf;      /* warm cream */
+    --muted:   #c0a074;      /* warm sand */
+    --accent:  #e7a33f;      /* warm amber/gold -- good */
+    --accentd: #c47f2a;
+    --gold:    #f2c766;
+    --amber:   #dd8a3c;      /* off -- correcting */
+    --red:     #cf5a34;      /* far off */
+    --panel:   rgba(38,26,14,0.82);
+    --line:    rgba(210,170,110,0.2);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
@@ -455,17 +455,17 @@ function stopTracks() { if (S.stream) { S.stream.getTracks().forEach((t)=>t.stop
 const _reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 function drawBackdrop() {
   const W = canvas.width, H = canvas.height;
-  const g = ctx.createRadialGradient(W/2, H*0.14, 0, W/2, H*0.14, H*1.15);
-  g.addColorStop(0, "#132821"); g.addColorStop(0.55, "#0c1a14"); g.addColorStop(1, "#08120d");
+  const g = ctx.createRadialGradient(W/2, H*0.2, 0, W/2, H*0.2, H*1.2);
+  g.addColorStop(0, "#3a2a17"); g.addColorStop(0.5, "#241a0e"); g.addColorStop(1, "#160f07");
   ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
   drawInkRibbons(W, H);
 }
-/* Ambient chi: two slow flowing ink ribbons (jade + gold), low alpha. */
+/* Ambient chi: two slow flowing sumi ink-washes (umber + gold), low alpha. */
 function drawInkRibbons(W, H) {
   const t = _reduceMotion ? 0 : performance.now() / 3400;
   const ribbons = [
-    { col:"rgba(53,217,160,0.16)", w:W*0.055, ph:0,   yb:0.55, amp:0.10 },
-    { col:"rgba(232,192,122,0.13)", w:W*0.035, ph:2.1, yb:0.42, amp:0.14 },
+    { col:"rgba(120,78,38,0.20)", w:W*0.065, ph:0,   yb:0.55, amp:0.10 },
+    { col:"rgba(235,185,110,0.10)", w:W*0.03, ph:2.1, yb:0.40, amp:0.14 },
   ];
   ctx.save(); ctx.lineCap = "round";
   for (const r of ribbons) {
@@ -482,52 +482,61 @@ function drawInkRibbons(W, H) {
   ctx.restore(); ctx.shadowBlur = 0;
 }
 
-/* Ink Flow palette for the live figure (canvas needs literal colours — it
-   cannot resolve CSS var()). `good` swaps the jade glow for a warm gold. */
+/* Warm palette for the live figure (canvas needs literal colours). `good` swaps
+   the amber glow for a brighter gold. */
 const INK = {
-  outline:"#0b1712", cream:"#f3ecd9",
-  glowJade:"rgba(53,217,160,0.55)", glowGold:"rgba(232,192,122,0.78)",
-  flare:"#f0a25f", flareGlow:"rgba(240,150,90,0.65)",
+  outline:"#2a1a0c", cream:"#f6ecd6",
+  glowJade:"rgba(230,160,70,0.5)", glowGold:"rgba(242,199,102,0.85)",   // names kept; both warm now
+  flare:"#d2603a", flareGlow:"rgba(210,96,58,0.6)",
 };
-/* Draw the figure: a cream stroke over a dark brush under-outline (the
-   painterly-anime look), jade glow — or gold when on target. flareKeys = the
-   off limb, painted warm. */
-function drawLiveSkeleton(lm, good, flareKeys) {
+/* Draw YOU as a glowing, volumetric "chi body" — filled tapered limbs + torso +
+   head built from the live pose, layered as glow / under-shade / cream fill /
+   rim light. Warm to sit inside the painted world. `good` glows gold; a flared
+   limb turns warm-red. */
+function drawChiBody(lm, good, flareKeys) {
   const W = canvas.width, H = canvas.height;
-  const R = Math.max(4, W/120);
   const flareIdx = flareKeys || new Set();
+  const has = (i) => lm[i] && (lm[i].visibility ?? 0) >= CFG.VIS_MIN;
+  const P = (i) => [lm[i].x*W, lm[i].y*H];
+  const scx=(lm[11].x+lm[12].x)/2*W, scy=(lm[11].y+lm[12].y)/2*H;
+  const hcx=(lm[23].x+lm[24].x)/2*W, hcy=(lm[23].y+lm[24].y)/2*H;
+  const U = Math.hypot(scx-hcx, scy-hcy) || Math.max(40, W/10);   // body unit = torso length px
   const glow = good ? INK.glowGold : INK.glowJade;
-  ctx.lineCap = "round";
-  for (const [a,b] of BONES) {
-    const pa = lm[a], pb = lm[b];
-    if (!pa || !pb || (pa.visibility??0)<CFG.VIS_MIN || (pb.visibility??0)<CFG.VIS_MIN) continue;
-    const hot = flareIdx.has(a) && flareIdx.has(b);
-    const x1=pa.x*W, y1=pa.y*H, x2=pb.x*W, y2=pb.y*H;
-    ctx.strokeStyle = INK.outline; ctx.lineWidth = R*(hot?2.0:1.7); ctx.shadowBlur = 0;
-    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    ctx.strokeStyle = hot ? INK.flare : INK.cream; ctx.lineWidth = R*(hot?1.35:1.05);
-    ctx.shadowColor = hot ? INK.flareGlow : glow; ctx.shadowBlur = R*2.4;
-    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const SEG = [ [11,13,.17,.13],[13,15,.13,.09],[12,14,.17,.13],[14,16,.13,.09],
+                [23,25,.23,.18],[25,27,.18,.12],[24,26,.23,.18],[26,28,.18,.12] ];
+  function capsule(a,b,wa,wb,col){
+    if(!has(a)||!has(b)) return;
+    const A=P(a),B=P(b),dx=B[0]-A[0],dy=B[1]-A[1],len=Math.hypot(dx,dy)||1,nx=-dy/len,ny=dx/len,rA=wa*U/2,rB=wb*U/2;
+    ctx.beginPath();
+    ctx.moveTo(A[0]+nx*rA,A[1]+ny*rA); ctx.lineTo(B[0]+nx*rB,B[1]+ny*rB);
+    ctx.arc(B[0],B[1],rB,Math.atan2(ny,nx),Math.atan2(-ny,-nx),false);
+    ctx.lineTo(A[0]-nx*rA,A[1]-ny*rA);
+    ctx.arc(A[0],A[1],rA,Math.atan2(-ny,-nx),Math.atan2(ny,nx),false);
+    ctx.closePath(); ctx.fillStyle=col; ctx.fill();
   }
-  ctx.shadowBlur = 0;
-  for (const i of [LM.L_SHOULDER,LM.R_SHOULDER,LM.L_ELBOW,LM.R_ELBOW,LM.L_WRIST,LM.R_WRIST,
-                   LM.L_HIP,LM.R_HIP,LM.L_KNEE,LM.R_KNEE,LM.L_ANKLE,LM.R_ANKLE]) {
-    const p = lm[i]; if (!p || (p.visibility??0)<CFG.VIS_MIN) continue;
-    const cx=p.x*W, cy=p.y*H;
-    ctx.fillStyle = INK.outline; ctx.shadowBlur = 0;
-    ctx.beginPath(); ctx.arc(cx,cy,R*0.9,0,7); ctx.fill();
-    ctx.fillStyle = INK.cream; ctx.shadowColor = glow; ctx.shadowBlur = R*1.6;
-    ctx.beginPath(); ctx.arc(cx,cy,R*0.6,0,7); ctx.fill();
+  function disc(i,fr,col){ if(!has(i))return; const p=P(i); ctx.beginPath(); ctx.arc(p[0],p[1],fr*U,0,7); ctx.fillStyle=col; ctx.fill(); }
+  function torsoFill(col){ if(!(has(11)&&has(12)&&has(23)&&has(24)))return; const a=P(11),b=P(12),c=P(24),d=P(23);
+    ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.lineTo(c[0],c[1]); ctx.lineTo(d[0],d[1]); ctx.closePath(); ctx.fillStyle=col; ctx.fill(); }
+  function headNeck(col){ if(!has(0))return; const n=P(0);
+    const hr=Math.hypot(n[0]-scx,n[1]-scy)*0.72 || U*0.4;
+    ctx.beginPath(); ctx.moveTo(scx-U*0.07,scy); ctx.lineTo(scx+U*0.07,scy); ctx.lineTo(n[0]+U*0.05,n[1]); ctx.lineTo(n[0]-U*0.05,n[1]); ctx.closePath(); ctx.fillStyle=col; ctx.fill();
+    ctx.beginPath(); ctx.arc(n[0],n[1]-hr*0.15,hr,0,7); ctx.fillStyle=col; ctx.fill(); }
+  function shapes(col){
+    torsoFill(col);
+    for(const [a,b,wa,wb] of SEG){ const hot=flareIdx.has(a)&&flareIdx.has(b); capsule(a,b,wa,wb, hot?INK.flare:col); }
+    disc(11,.093,col);disc(12,.093,col);disc(13,.07,col);disc(14,.07,col);
+    disc(23,.117,col);disc(24,.117,col);disc(25,.093,col);disc(26,.093,col);
+    disc(15,.05,col);disc(16,.05,col);disc(27,.06,col);disc(28,.06,col);
+    headNeck(col);
   }
-  ctx.shadowBlur = 0;
-  const n = lm[LM.NOSE];
-  if (n && (n.visibility??0)>=CFG.VIS_MIN) {
-    ctx.strokeStyle = INK.outline; ctx.lineWidth = R*0.75; ctx.shadowBlur = 0;
-    ctx.beginPath(); ctx.arc(n.x*W, n.y*H, R*1.7, 0, 7); ctx.stroke();
-    ctx.strokeStyle = INK.cream; ctx.lineWidth = R*0.4; ctx.shadowColor = glow; ctx.shadowBlur = R*1.4;
-    ctx.beginPath(); ctx.arc(n.x*W, n.y*H, R*1.65, 0, 7); ctx.stroke();
-  }
-  ctx.shadowBlur = 0;
+  ctx.save(); ctx.filter = `blur(${Math.max(5,U*0.05)}px)`; ctx.globalAlpha=.55; shapes(good?"rgba(242,199,102,0.95)":"rgba(230,150,60,0.85)"); ctx.restore();
+  ctx.filter="none";
+  ctx.globalAlpha=0.76;                                                              // translucent — the painted master shows through you
+  ctx.save(); ctx.translate(U*0.015,U*0.025); shapes(INK.outline); ctx.restore();   // under-shade
+  shapes(INK.cream);                                                                 // body
+  ctx.globalAlpha=1;
+  ctx.save(); ctx.globalCompositeOperation="overlay"; ctx.globalAlpha=.4; ctx.translate(-U*0.012,-U*0.02); shapes("#fffaf0"); ctx.restore();  // rim
+  ctx.globalCompositeOperation="source-over";
 }
 
 /* Draw the target posture ghost, aligned onto the live body (hip + torso
@@ -551,6 +560,28 @@ function drawTargetGhost(refPts, liveLm) {
   ctx.setLineDash([]); ctx.restore();
 }
 
+/* The painted panda master for this posture — the figure you copy. Drawn as a
+   transparent cut-out, centred, faint while you're working, brightening as you
+   match. Falls back to the dashed ghost when a posture has no art (e.g. your
+   own captures). */
+function getArt(ref){
+  if(!ref.art) return null;
+  if(!ref._img){ const im = new Image(); im.src = ref.art; ref._img = im; }
+  return (ref._img.complete && ref._img.naturalWidth) ? ref._img : null;
+}
+function drawTargetArt(img, good, lm){
+  const W = canvas.width, H = canvas.height;
+  const yOf = (i) => (lm[i] && (lm[i].visibility??0) >= CFG.VIS_MIN) ? lm[i].y*H : null;
+  const topY = yOf(LM.NOSE) ?? H*0.12;
+  const ankles = [yOf(LM.L_ANKLE), yOf(LM.R_ANKLE)].filter(v => v != null);
+  const botY = ankles.length ? Math.max(...ankles) : H*0.96;
+  const cxU = (lm[LM.L_HIP].x + lm[LM.R_HIP].x + lm[LM.L_SHOULDER].x + lm[LM.R_SHOULDER].x)/4 * W;
+  const drawH = Math.max(H*0.4, botY - topY) / 0.80;      // panda fills ~80% of its frame; match user height
+  const s = drawH/img.naturalHeight, w = img.naturalWidth*s;
+  ctx.save(); ctx.globalAlpha = good ? 0.9 : 0.52;
+  ctx.drawImage(img, cxU - w/2, (topY+botY)/2 - drawH/2, w, drawH);
+  ctx.restore();
+}
 
 /* Ki-Surge reward burst — fires once when a posture is held. Additive gold +
    electric-blue: a core flash, expanding rings, and rising sparks. */
@@ -565,11 +596,11 @@ function drawBurst(p, lm) {
   ctx.globalCompositeOperation = "lighter";
   const cr = R*4*(0.4 + ease*1.4);
   const cg = ctx.createRadialGradient(cx,cy,0,cx,cy,cr);
-  cg.addColorStop(0, `rgba(255,246,214,${0.55*(1-p)})`);
-  cg.addColorStop(0.4, `rgba(232,192,122,${0.3*(1-p)})`);
-  cg.addColorStop(1, "rgba(77,184,255,0)");
+  cg.addColorStop(0, `rgba(255,244,208,${0.6*(1-p)})`);
+  cg.addColorStop(0.4, `rgba(242,199,102,${0.32*(1-p)})`);
+  cg.addColorStop(1, "rgba(210,110,50,0)");
   ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx,cy,cr,0,7); ctx.fill();
-  for (const [rr, col] of [[ease, "232,192,122"], [ease*0.7, "127,208,255"]]) {
+  for (const [rr, col] of [[ease, "242,199,102"], [ease*0.7, "255,226,170"]]) {
     ctx.strokeStyle = `rgba(${col},${0.6*(1-p)})`; ctx.lineWidth = R*0.35*(1-p*0.6);
     ctx.beginPath(); ctx.arc(cx,cy, R*(1.5 + rr*11), 0, 7); ctx.stroke();
   }
@@ -613,16 +644,17 @@ function processPose(lm) {
 
   drawBackdrop();
   const ref = S.postures[S.targetIdx];
-  if (!ref) { drawLiveSkeleton(lm, false); setCue("No posture selected", ""); setMatch(null); return; }
+  if (!ref) { drawChiBody(lm, false); setCue("No posture selected", ""); setMatch(null); return; }
 
   const live = fingerprint(lm);
   const { match, worst } = comparePose(live, ref.fp);
   S.match = match; S.worst = worst;
 
   const good = match >= CFG.HOLD_MATCH_MIN;
-  drawTargetGhost(ref.fp.pts, lm);
+  const art = getArt(ref);
+  if (art) drawTargetArt(art, good, lm); else drawTargetGhost(ref.fp.pts, lm);
   const flare = (!good && worst) ? flareKeysFor(worst.key) : null;
-  drawLiveSkeleton(lm, good, flare);
+  drawChiBody(lm, good, flare);
   if (S.burst != null) { const bp = (performance.now() - S.burst) / BURST_MS; if (bp <= 1) drawBurst(bp, lm); else S.burst = null; }
 
   setMatch(match);
@@ -721,16 +753,16 @@ function loadPostures() {
    tai-chi canon. Replace/extend with your own via "Capture new". */
 function samplePostures() {
   return [
-    { name:"Settle · hands at the dan tien", builtin:true, fp:{
+    { name:"Settle · hands at the dan tien", builtin:true, art:"art/panda_settle.png", fp:{
       angles:{ L_elbow:71, R_elbow:78, L_shoulder:63, R_shoulder:59, L_hip:161, R_hip:163, L_knee:177, R_knee:178, torso:-1 },
       pts:{0:[-0.011,-1.413],11:[0.432,-0.992],12:[-0.454,-1.007],13:[0.907,-0.632],14:[-0.898,-0.611],15:[0.462,-0.335],16:[-0.524,-0.341],23:[0.261,0.003],24:[-0.261,-0.003],25:[0.4,0.814],26:[-0.351,0.795],27:[0.485,1.501],28:[-0.463,1.518]} } },
-    { name:"Hold up the heavens", builtin:true, fp:{
+    { name:"Hold up the heavens", builtin:true, art:"art/panda_heavens.png", fp:{
       angles:{ L_elbow:133, R_elbow:137, L_shoulder:164, R_shoulder:168, L_hip:171, R_hip:168, L_knee:176, R_knee:179, torso:-1 },
       pts:{0:[-0.001,-1.261],11:[0.323,-1.001],12:[-0.356,-0.998],13:[0.496,-1.461],14:[-0.517,-1.474],15:[0.251,-1.956],16:[-0.318,-1.923],23:[0.238,-0.008],24:[-0.238,0.008],25:[0.289,0.744],26:[-0.305,0.728],27:[0.378,1.406],28:[-0.362,1.421]} } },
-    { name:"Open · arms wide", builtin:true, fp:{
+    { name:"Open · arms wide", builtin:true, art:"art/panda_open.png", fp:{
       angles:{ L_elbow:172, R_elbow:172, L_shoulder:100, R_shoulder:92, L_hip:161, R_hip:170, L_knee:180, R_knee:177, torso:2 },
       pts:{0:[0.018,-1.376],11:[0.491,-0.985],12:[-0.413,-1.013],13:[1.177,-0.956],14:[-1.068,-0.947],15:[1.798,-1.015],16:[-1.782,-0.974],23:[0.27,0.002],24:[-0.27,-0.002],25:[0.347,0.735],26:[-0.297,0.746],27:[0.423,1.435],28:[-0.357,1.465]} } },
-    { name:"Horse stance · hold the ball", builtin:true, fp:{
+    { name:"Horse stance · hold the ball", builtin:true, art:"art/panda_horse.png", fp:{
       angles:{ L_elbow:51, R_elbow:11, L_shoulder:59, R_shoulder:80, L_hip:98, R_hip:100, L_knee:110, R_knee:109, torso:1 },
       pts:{0:[0.036,-1.376],11:[0.452,-0.984],12:[-0.417,-1.016],13:[0.793,-0.693],14:[-0.808,-0.894],15:[0.252,-0.595],16:[-0.142,-0.967],23:[0.288,0],24:[-0.288,0],25:[1.125,0.27],26:[-1.136,0.271],27:[1.151,0.965],28:[-1.158,0.986]} } },
   ];

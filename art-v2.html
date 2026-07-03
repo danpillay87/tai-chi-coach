@@ -1,0 +1,105 @@
+<style>
+  *{box-sizing:border-box; margin:0; padding:0}
+  .board{width:1440px; min-height:1040px; background:
+      radial-gradient(120% 80% at 50% -10%, #172c22 0%, transparent 55%), #0a1611;
+    color:#f3ecd9; font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    padding:52px 56px 46px;}
+  .head{max-width:920px}
+  .kick{font:600 12px/1 system-ui; letter-spacing:.32em; text-transform:uppercase; color:#7fb79c; margin-bottom:16px}
+  h1{font-family:Georgia,"Times New Roman",serif; font-weight:700; font-size:42px; line-height:1.08; color:#f3ecd9; letter-spacing:-.01em}
+  h1 span{color:#e8c07a}
+  .sub{margin-top:14px; font-size:16.5px; line-height:1.55; color:#bccabf; max-width:80ch}
+  .row{display:flex; gap:30px; margin-top:44px; align-items:flex-start}
+  .card{flex:1; display:flex; flex-direction:column; gap:16px}
+  .phone{position:relative; aspect-ratio:300/616; border-radius:30px; overflow:hidden;
+    border:1px solid rgba(120,215,170,.2); box-shadow:0 26px 60px rgba(0,0,0,.5)}
+  .phone .fig{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 18%}
+  .phone .ground{position:absolute; inset:0; background:radial-gradient(90% 70% at 50% 14%,#173026 0%,#0c1a14 60%,#08120d 100%); z-index:-1}
+  .hud{position:absolute; inset:0; padding:15px; display:flex; flex-direction:column; justify-content:space-between}
+  .hrow{display:flex; justify-content:space-between; align-items:flex-start}
+  .chip{background:rgba(11,23,18,.62); border:1px solid rgba(120,215,170,.24); border-radius:11px; padding:8px 12px; backdrop-filter:blur(6px)}
+  .chip .k{display:block; font:600 8px/1 system-ui; letter-spacing:.2em; text-transform:uppercase; color:#8fc4ac}
+  .chip .v{font-family:Georgia,serif; font-size:14px; margin-top:3px; color:#f3ecd9}
+  .ring{display:flex; flex-direction:column; align-items:center}
+  .ring .pct{font:800 18px/1 system-ui; color:#4fe0b0; font-variant-numeric:tabular-nums}
+  .ring .pl{font:600 8px/1 system-ui; letter-spacing:.2em; text-transform:uppercase; color:#8fc4ac; margin-top:3px}
+  .cuew{display:flex; flex-direction:column; align-items:center; gap:9px}
+  .cue{background:rgba(11,23,18,.62); border:1px solid rgba(120,215,170,.24); border-radius:13px; padding:8px 16px;
+    font-family:Georgia,serif; font-size:15px; color:#f3ecd9; backdrop-filter:blur(6px)}
+  .hold{width:60%; height:6px; border-radius:4px; background:rgba(255,255,255,.13); overflow:hidden}
+  .hold i{display:block; height:100%; width:72%; background:linear-gradient(90deg,#35d9a0,#e8c07a); border-radius:4px}
+  .meta .nm{display:flex; align-items:baseline; gap:10px}
+  .meta h3{font-size:19px; font-weight:800; letter-spacing:.01em}
+  .meta .cost{font:600 11px/1 system-ui; padding:4px 9px; border-radius:20px}
+  .cost.big{background:rgba(232,192,122,.14); color:#e8c07a; border:1px solid rgba(232,192,122,.3)}
+  .cost.now{background:rgba(79,224,176,.14); color:#4fe0b0; border:1px solid rgba(79,224,176,.3)}
+  .meta p{margin-top:9px; font-size:13.5px; line-height:1.5; color:#b4c1b6}
+  .foot{margin-top:40px; padding-top:20px; border-top:1px solid rgba(120,215,170,.14); font-size:13.5px; line-height:1.6; color:#8fa79a; max-width:110ch}
+  .foot b{color:#cdd7cb}
+</style>
+
+<div class="board">
+  <div class="head">
+    <p class="kick">STILL &middot; figure direction &mdash; take two</p>
+    <h1>Not the colours &mdash; <span>what we draw over you.</span></h1>
+    <p class="sub">The last mock recoloured a stick skeleton, which was never going to look like anime. Here are the two approaches that actually can. Same posture in each ("Hold up the heavens"), same HUD &mdash; so you're judging the <b style="color:#cdd7cb">figure itself</b>. The two avatars are real generated key-art; the chi body is rendered live from your pose.</p>
+  </div>
+
+  <div class="row">
+    <div class="card">
+      <div class="phone">
+        <div class="ground"></div>
+        <img class="fig" src="refs/avatar_idol_c.png" alt="">
+        <div class="hud">
+          <div class="hrow">
+            <div class="chip"><span class="k">Target</span><span class="v">Hold up the heavens</span></div>
+            <div class="ring"><svg width="50" height="50" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="9"/><circle cx="50" cy="50" r="42" fill="none" stroke="#4fe0b0" stroke-width="9" stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="32" transform="rotate(-90 50 50)"/></svg><span class="pct">88</span><span class="pl">match</span></div>
+          </div>
+          <div class="cuew"><div class="cue">Hold it&hellip; 2s</div><div class="hold"><i></i></div></div>
+        </div>
+      </div>
+      <div class="meta">
+        <div class="nm"><h3>Avatar &mdash; Idol</h3><span class="cost big">biggest build</span></div>
+        <p>A real drawn character (VTuber-style) that mirrors your pose. This is what actually looks like your references. Needs character art + a rig to move &mdash; the heaviest option, but the ceiling.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="phone">
+        <div class="ground"></div>
+        <img class="fig" src="refs/avatar_calm.png" alt="">
+        <div class="hud">
+          <div class="hrow">
+            <div class="chip"><span class="k">Target</span><span class="v">Hold up the heavens</span></div>
+            <div class="ring"><svg width="50" height="50" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="9"/><circle cx="50" cy="50" r="42" fill="none" stroke="#4fe0b0" stroke-width="9" stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="32" transform="rotate(-90 50 50)"/></svg><span class="pct">88</span><span class="pl">match</span></div>
+          </div>
+          <div class="cuew"><div class="cue">Hold it&hellip; 2s</div><div class="hold"><i></i></div></div>
+        </div>
+      </div>
+      <div class="meta">
+        <div class="nm"><h3>Avatar &mdash; Calm</h3><span class="cost big">biggest build</span></div>
+        <p>Same avatar approach, softer Ghibli-watercolour flavour. Shows the style range once we commit to a drawn character. Wholesome, meditative &mdash; truest to tai chi.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="phone">
+        <div class="ground"></div>
+        <img class="fig" src="refs/chi_render.png" alt="" style="object-position:center 30%">
+        <div class="hud">
+          <div class="hrow">
+            <div class="chip"><span class="k">Target</span><span class="v">Hold up the heavens</span></div>
+            <div class="ring"><svg width="50" height="50" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="9"/><circle cx="50" cy="50" r="42" fill="none" stroke="#4fe0b0" stroke-width="9" stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="32" transform="rotate(-90 50 50)"/></svg><span class="pct">88</span><span class="pl">match</span></div>
+          </div>
+          <div class="cuew"><div class="cue">Hold it&hellip; 2s</div><div class="hold"><i></i></div></div>
+        </div>
+      </div>
+      <div class="meta">
+        <div class="nm"><h3>Chi body</h3><span class="cost now">ships now</span></div>
+        <p>A glowing, volumetric energy-body drawn live from your pose &mdash; no lines, no character art. Reads as a chi spirit, not a person. Less "wow" than an avatar, but real and buildable today.</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="foot"><b>The honest trade-off:</b> the avatars look like what you asked for, but a drawn character has to be rigged to move with you (real work, and it only ever looks like that one character). The chi body isn't a character &mdash; it's an energy form &mdash; but it's rendered from your live pose right now, glows beautifully, and needs zero art. <b>Middle path if you want it:</b> ship the chi body now, treat the avatar as a v2 once the core feels good on a real body.</p>
+</div>
