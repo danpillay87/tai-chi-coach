@@ -39,8 +39,11 @@ GitHub Pages like GHOST.
 - **Hold to complete** — when you're still *and* above the match threshold for 3s,
   a chime + "posture held".
 - **Capture your own** — get into a pose, hit *Capture new*, 3-2-1 countdown, it
-  stores that pose's fingerprint as a reference. Two illustrative **samples** ship
-  so it works out of the box; replace them with real captures.
+  stores that pose's fingerprint as a reference.
+- **Four built-in reference postures** ship (Settle / Hold up the heavens / Open /
+  Horse stance), each **read from a real front-facing photo** via the same pose
+  pipeline — see `refs/`. Named by what the figure does, not claimed as tai-chi
+  canon. Add authentic ones any time via *Capture new*.
 
 ## Privacy (inherited from GHOST, non-negotiable)
 

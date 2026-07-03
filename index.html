@@ -181,7 +181,7 @@
     <h3>Postures</h3>
     <p class="note">STILL guides you into the selected posture and scores how close you are. Capture your
        own by getting into the pose and pressing <b>Capture new</b> — a 3-second countdown gives you time to
-       settle. Your captures are the reference to match. (Two sample postures ship so it works out of the box.)</p>
+       settle. Your captures are the reference to match. (Four front-facing reference postures ship, each read from a photo, so it works out of the box.)</p>
     <div class="plist" id="plist"></div>
     <div class="row">
       <button id="captureBtn" class="primary">＋ Capture new posture</button>
@@ -191,7 +191,7 @@
        never images.</p>
     <div class="row">
       <button id="voiceBtn">Voice cues: ON</button>
-      <button id="resetBtn">Reset sample postures</button>
+      <button id="resetBtn">Reset built-in postures</button>
       <button id="clearBtn">Clear all postures</button>
     </div>
   </div>
@@ -639,29 +639,25 @@ function loadPostures() {
   try { const raw = localStorage.getItem(LS_POSTURES); if (raw) S.postures = JSON.parse(raw); } catch(_){}
   if (!Array.isArray(S.postures) || !S.postures.length) S.postures = samplePostures();
 }
-/* Two synthetic sample postures so the app works before any capture. Angle
-   values are hand-set to plausible tai-chi-ish shapes; positions approximate a
-   frontal stance. Clearly flagged as samples — Dan captures real ones over them. */
+/* Built-in reference postures. These are REAL fingerprints: each was extracted
+   by running this exact pose pipeline on a clean, front-facing, full-body
+   reference image (generated front-on so the angles map onto a facing user).
+   Named descriptively by what the figure does — not claimed as authenticated
+   tai-chi canon. Replace/extend with your own via "Capture new". */
 function samplePostures() {
-  // helper to build a symmetric-ish avatar (normalised hip-centred coords)
-  const stance = (kneeBend) => ({
-    [LM.L_SHOULDER]:[-0.55,-1], [LM.R_SHOULDER]:[0.55,-1],
-    [LM.L_HIP]:[-0.35,0], [LM.R_HIP]:[0.35,0],
-    [LM.L_KNEE]:[-0.45,1.1-kneeBend*0.1], [LM.R_KNEE]:[0.45,1.1-kneeBend*0.1],
-    [LM.L_ANKLE]:[-0.5,2.2-kneeBend*0.2], [LM.R_ANKLE]:[0.5,2.2-kneeBend*0.2],
-    [LM.NOSE]:[0,-1.7],
-  });
-  const wardOff = stance(2);
-  wardOff[LM.L_ELBOW]=[-0.7,-0.4]; wardOff[LM.L_WRIST]=[-0.2,-0.6];   // left arm rounded across
-  wardOff[LM.R_ELBOW]=[0.75,-0.6]; wardOff[LM.R_WRIST]=[0.55,-1.1];   // right hand up
-  const openArms = stance(1);
-  openArms[LM.L_ELBOW]=[-1.1,-1]; openArms[LM.L_WRIST]=[-1.6,-1];
-  openArms[LM.R_ELBOW]=[1.1,-1];  openArms[LM.R_WRIST]=[1.6,-1];
   return [
-    { name:"Sample · Ward Off (left)", sample:true,
-      fp:{ angles:{ L_elbow:110, R_elbow:120, L_shoulder:55, R_shoulder:70, L_hip:150, R_hip:150, L_knee:150, R_knee:150, torso:0 }, pts:wardOff } },
-    { name:"Sample · Open Arms", sample:true,
-      fp:{ angles:{ L_elbow:160, R_elbow:160, L_shoulder:88, R_shoulder:88, L_hip:165, R_hip:165, L_knee:165, R_knee:165, torso:0 }, pts:openArms } },
+    { name:"Settle · hands at the dan tien", builtin:true, fp:{
+      angles:{ L_elbow:71, R_elbow:78, L_shoulder:63, R_shoulder:59, L_hip:161, R_hip:163, L_knee:177, R_knee:178, torso:-1 },
+      pts:{0:[-0.011,-1.413],11:[0.432,-0.992],12:[-0.454,-1.007],13:[0.907,-0.632],14:[-0.898,-0.611],15:[0.462,-0.335],16:[-0.524,-0.341],23:[0.261,0.003],24:[-0.261,-0.003],25:[0.4,0.814],26:[-0.351,0.795],27:[0.485,1.501],28:[-0.463,1.518]} } },
+    { name:"Hold up the heavens", builtin:true, fp:{
+      angles:{ L_elbow:133, R_elbow:137, L_shoulder:164, R_shoulder:168, L_hip:171, R_hip:168, L_knee:176, R_knee:179, torso:-1 },
+      pts:{0:[-0.001,-1.261],11:[0.323,-1.001],12:[-0.356,-0.998],13:[0.496,-1.461],14:[-0.517,-1.474],15:[0.251,-1.956],16:[-0.318,-1.923],23:[0.238,-0.008],24:[-0.238,0.008],25:[0.289,0.744],26:[-0.305,0.728],27:[0.378,1.406],28:[-0.362,1.421]} } },
+    { name:"Open · arms wide", builtin:true, fp:{
+      angles:{ L_elbow:172, R_elbow:172, L_shoulder:100, R_shoulder:92, L_hip:161, R_hip:170, L_knee:180, R_knee:177, torso:2 },
+      pts:{0:[0.018,-1.376],11:[0.491,-0.985],12:[-0.413,-1.013],13:[1.177,-0.956],14:[-1.068,-0.947],15:[1.798,-1.015],16:[-1.782,-0.974],23:[0.27,0.002],24:[-0.27,-0.002],25:[0.347,0.735],26:[-0.297,0.746],27:[0.423,1.435],28:[-0.357,1.465]} } },
+    { name:"Horse stance · hold the ball", builtin:true, fp:{
+      angles:{ L_elbow:51, R_elbow:11, L_shoulder:59, R_shoulder:80, L_hip:98, R_hip:100, L_knee:110, R_knee:109, torso:1 },
+      pts:{0:[0.036,-1.376],11:[0.452,-0.984],12:[-0.417,-1.016],13:[0.793,-0.693],14:[-0.808,-0.894],15:[0.252,-0.595],16:[-0.142,-0.967],23:[0.288,0],24:[-0.288,0],25:[1.125,0.27],26:[-1.136,0.271],27:[1.151,0.965],28:[-1.158,0.986]} } },
   ];
 }
 
@@ -678,7 +674,7 @@ function renderPostureUI() {
   S.postures.forEach((p, i) => {
     const row = document.createElement("div"); row.className = "pitem";
     row.innerHTML = `<span class="nm">${p.name}</span>` +
-      (p.sample ? `<span class="sm">sample</span>` : ``);
+      (p.builtin ? `<span class="sm">built-in</span>` : ``);
     const use = document.createElement("button"); use.textContent = "Practise";
     use.onclick = () => { S.targetIdx = i; S.holdT = 0; S.lastAchieved=-1; renderPostureUI(); closeSheet(); };
     const del = document.createElement("button"); del.textContent = "✕";
@@ -697,7 +693,7 @@ async function captureNew() {
   countdown.textContent="Hold"; await wait(400); countdown.classList.remove("show");
   if (!S.live) return;
   const fp = fingerprint(S.live);
-  const name = prompt("Name this posture", "My posture " + (S.postures.filter(p=>!p.sample).length+1));
+  const name = prompt("Name this posture", "My posture " + (S.postures.filter(p=>!p.builtin).length+1));
   if (name === null) return;
   S.postures.push({ name: name || "Untitled", sample:false, fp });
   S.targetIdx = S.postures.length - 1; S.holdT=0; S.lastAchieved=-1;
@@ -740,7 +736,7 @@ menuBtn.addEventListener("click", openSheet);
 scrim.addEventListener("click", closeSheet);
 captureBtn.addEventListener("click", captureNew);
 voiceBtn.addEventListener("click", () => { S.voice = !S.voice; voiceBtn.textContent = "Voice cues: " + (S.voice?"ON":"OFF"); });
-resetBtn.addEventListener("click", () => { S.postures = S.postures.filter(p=>!p.sample).concat(samplePostures());
+resetBtn.addEventListener("click", () => { S.postures = S.postures.filter(p=>!p.builtin).concat(samplePostures());
   savePostures(); renderPostureUI(); });
 clearBtn.addEventListener("click", () => { if(confirm("Delete all postures (including your captures)?")){
   S.postures = samplePostures(); S.targetIdx=0; savePostures(); renderPostureUI(); } });
