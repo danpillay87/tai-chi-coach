@@ -489,10 +489,10 @@ const INK = {
   glowJade:"rgba(230,160,70,0.5)", glowGold:"rgba(242,199,102,0.85)",   // names kept; both warm now
   flare:"#d2603a", flareGlow:"rgba(210,96,58,0.6)",
 };
-/* Draw YOU as a glowing, volumetric "chi body" — filled tapered limbs + torso +
-   head built from the live pose, layered as glow / under-shade / cream fill /
-   rim light. Warm to sit inside the painted world. `good` glows gold; a flared
-   limb turns warm-red. */
+/* Draw YOU as a loose sumi-e INK-BRUSH figure — tapered, slightly bowed
+   calligraphic strokes tracing the live pose, an open ensō ring for the head.
+   Luminous cream ink (gold when on target, warm-red on the off limb), thin
+   enough that the painted master reads through it. Classy, not a solid body. */
 function drawChiBody(lm, good, flareKeys) {
   const W = canvas.width, H = canvas.height;
   const flareIdx = flareKeys || new Set();
@@ -500,43 +500,40 @@ function drawChiBody(lm, good, flareKeys) {
   const P = (i) => [lm[i].x*W, lm[i].y*H];
   const scx=(lm[11].x+lm[12].x)/2*W, scy=(lm[11].y+lm[12].y)/2*H;
   const hcx=(lm[23].x+lm[24].x)/2*W, hcy=(lm[23].y+lm[24].y)/2*H;
-  const U = Math.hypot(scx-hcx, scy-hcy) || Math.max(40, W/10);   // body unit = torso length px
-  const glow = good ? INK.glowGold : INK.glowJade;
-  const SEG = [ [11,13,.17,.13],[13,15,.13,.09],[12,14,.17,.13],[14,16,.13,.09],
-                [23,25,.23,.18],[25,27,.18,.12],[24,26,.23,.18],[26,28,.18,.12] ];
-  function capsule(a,b,wa,wb,col){
-    if(!has(a)||!has(b)) return;
-    const A=P(a),B=P(b),dx=B[0]-A[0],dy=B[1]-A[1],len=Math.hypot(dx,dy)||1,nx=-dy/len,ny=dx/len,rA=wa*U/2,rB=wb*U/2;
-    ctx.beginPath();
-    ctx.moveTo(A[0]+nx*rA,A[1]+ny*rA); ctx.lineTo(B[0]+nx*rB,B[1]+ny*rB);
-    ctx.arc(B[0],B[1],rB,Math.atan2(ny,nx),Math.atan2(-ny,-nx),false);
-    ctx.lineTo(A[0]-nx*rA,A[1]-ny*rA);
-    ctx.arc(A[0],A[1],rA,Math.atan2(-ny,-nx),Math.atan2(ny,nx),false);
+  const U = Math.hypot(scx-hcx, scy-hcy) || Math.max(40, W/10);
+  const ink   = good ? "#f2c766" : INK.cream;
+  const glowc = good ? "rgba(242,199,102,0.9)" : "rgba(232,178,92,0.7)";
+  // A tapered, gently-bowed brush stroke from A→B (widths in px; bow = fraction of length).
+  function stroke(ax,ay,bx,by,w0,w1,bow,col){
+    const dx=bx-ax, dy=by-ay, len=Math.hypot(dx,dy)||1, nx=-dy/len, ny=dx/len;
+    const mx=(ax+bx)/2 + nx*bow*len, my=(ay+by)/2 + ny*bow*len;
+    const N=16, Lp=[], Rp=[];
+    for(let i=0;i<=N;i++){ const t=i/N, it=1-t;
+      const px=it*it*ax+2*it*t*mx+t*t*bx, py=it*it*ay+2*it*t*my+t*t*by;
+      const tx=2*it*(mx-ax)+2*t*(bx-mx), ty=2*it*(my-ay)+2*t*(by-my), tl=Math.hypot(tx,ty)||1, ox=-ty/tl, oy=tx/tl;
+      const w=(w0*(1-t)+w1*t)*(0.72+0.28*Math.sin(Math.PI*t));   // taper with a slight belly
+      Lp.push([px+ox*w/2,py+oy*w/2]); Rp.push([px-ox*w/2,py-oy*w/2]);
+    }
+    ctx.beginPath(); ctx.moveTo(Lp[0][0],Lp[0][1]);
+    for(const p of Lp) ctx.lineTo(p[0],p[1]);
+    for(let i=Rp.length-1;i>=0;i--) ctx.lineTo(Rp[i][0],Rp[i][1]);
     ctx.closePath(); ctx.fillStyle=col; ctx.fill();
   }
-  function disc(i,fr,col){ if(!has(i))return; const p=P(i); ctx.beginPath(); ctx.arc(p[0],p[1],fr*U,0,7); ctx.fillStyle=col; ctx.fill(); }
-  function torsoFill(col){ if(!(has(11)&&has(12)&&has(23)&&has(24)))return; const a=P(11),b=P(12),c=P(24),d=P(23);
-    ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.lineTo(c[0],c[1]); ctx.lineTo(d[0],d[1]); ctx.closePath(); ctx.fillStyle=col; ctx.fill(); }
-  function headNeck(col){ if(!has(0))return; const n=P(0);
-    const hr=Math.hypot(n[0]-scx,n[1]-scy)*0.72 || U*0.4;
-    ctx.beginPath(); ctx.moveTo(scx-U*0.07,scy); ctx.lineTo(scx+U*0.07,scy); ctx.lineTo(n[0]+U*0.05,n[1]); ctx.lineTo(n[0]-U*0.05,n[1]); ctx.closePath(); ctx.fillStyle=col; ctx.fill();
-    ctx.beginPath(); ctx.arc(n[0],n[1]-hr*0.15,hr,0,7); ctx.fillStyle=col; ctx.fill(); }
-  function shapes(col){
-    torsoFill(col);
-    for(const [a,b,wa,wb] of SEG){ const hot=flareIdx.has(a)&&flareIdx.has(b); capsule(a,b,wa,wb, hot?INK.flare:col); }
-    disc(11,.093,col);disc(12,.093,col);disc(13,.07,col);disc(14,.07,col);
-    disc(23,.117,col);disc(24,.117,col);disc(25,.093,col);disc(26,.093,col);
-    disc(15,.05,col);disc(16,.05,col);disc(27,.06,col);disc(28,.06,col);
-    headNeck(col);
-  }
-  ctx.save(); ctx.filter = `blur(${Math.max(5,U*0.05)}px)`; ctx.globalAlpha=.55; shapes(good?"rgba(242,199,102,0.95)":"rgba(230,150,60,0.85)"); ctx.restore();
-  ctx.filter="none";
-  ctx.globalAlpha=0.76;                                                              // translucent — the painted master shows through you
-  ctx.save(); ctx.translate(U*0.015,U*0.025); shapes(INK.outline); ctx.restore();   // under-shade
-  shapes(INK.cream);                                                                 // body
-  ctx.globalAlpha=1;
-  ctx.save(); ctx.globalCompositeOperation="overlay"; ctx.globalAlpha=.4; ctx.translate(-U*0.012,-U*0.02); shapes("#fffaf0"); ctx.restore();  // rim
-  ctx.globalCompositeOperation="source-over";
+  const seg=(a,b,w0,w1,bow)=>{ if(!has(a)||!has(b))return; const A=P(a),B=P(b);
+    const col=(flareIdx.has(a)&&flareIdx.has(b))?INK.flare:ink; stroke(A[0],A[1],B[0],B[1],w0*U,w1*U,bow,col); };
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  ctx.shadowColor = glowc; ctx.shadowBlur = U*0.13;
+  if(has(11)&&has(12)&&has(23)&&has(24)) stroke(scx,scy,hcx,hcy,0.13*U,0.10*U,0,ink);   // spine
+  seg(11,12,0.05,0.05,0); seg(23,24,0.05,0.05,0);                                        // shoulders, hips
+  seg(11,13,0.075,0.052,0.05); seg(13,15,0.052,0.03,0.04);                               // left arm
+  seg(12,14,0.075,0.052,-0.05); seg(14,16,0.052,0.03,-0.04);                             // right arm
+  seg(23,25,0.095,0.068,0.03); seg(25,27,0.068,0.04,0.02);                               // left leg
+  seg(24,26,0.095,0.068,-0.03); seg(26,28,0.068,0.04,-0.02);                             // right leg
+  if(has(0)){ const n=P(0); const hr=(Math.hypot(n[0]-scx,n[1]-scy)*0.55)||U*0.32;       // head — open ensō ring
+    ctx.lineWidth=U*0.05; ctx.lineCap="round"; ctx.strokeStyle=ink;
+    ctx.beginPath(); ctx.arc(n[0], n[1]-hr*0.1, hr, Math.PI*0.2, Math.PI*1.95); ctx.stroke(); }
+  ctx.restore();
 }
 
 /* Draw the target posture ghost, aligned onto the live body (hip + torso

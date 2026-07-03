@@ -39,13 +39,20 @@ function torso(col){const a=P(11),b=P(12),c=P(24),d=P(23);x.beginPath();x.moveTo
 function headNeck(col){const n=P(0),scx=(P(11)[0]+P(12)[0])/2,scy=(P(11)[1]+P(12)[1])/2;const hr=Math.hypot(n[0]-scx,n[1]-scy)*0.72;x.beginPath();x.moveTo(scx-U*0.07,scy);x.lineTo(scx+U*0.07,scy);x.lineTo(n[0]+U*0.05,n[1]);x.lineTo(n[0]-U*0.05,n[1]);x.closePath();x.fillStyle=col;x.fill();x.beginPath();x.arc(n[0],n[1]-hr*0.15,hr,0,7);x.fillStyle=col;x.fill();}
 function shapes(col){torso(col);for(const[a,b,wa,wb]of SEG)capsule(a,b,wa,wb,col);disc(11,.093,col);disc(12,.093,col);disc(13,.07,col);disc(14,.07,col);disc(23,.117,col);disc(24,.117,col);disc(25,.093,col);disc(26,.093,col);disc(15,.05,col);disc(16,.05,col);disc(27,.06,col);disc(28,.06,col);headNeck(col);}
 function chibody(){
-  x.save();x.filter='blur(11px)';x.globalAlpha=.55;shapes('rgba(242,199,102,0.95)');x.restore();x.filter='none';
-  x.globalAlpha=0.76;
-  x.save();x.translate(U*0.015,U*0.025);shapes(INK.outline);x.restore();
-  shapes(INK.cream);
-  x.globalAlpha=1;
-  x.save();x.globalCompositeOperation='overlay';x.globalAlpha=.4;x.translate(-U*0.012,-U*0.02);shapes('#fffaf0');x.restore();
-  x.globalCompositeOperation='source-over';
+  const ink=INK.cream, glowc='rgba(232,178,92,0.72)';
+  function stroke(ax,ay,bx,by,w0,w1,bow,col){const dx=bx-ax,dy=by-ay,len=Math.hypot(dx,dy)||1,nx=-dy/len,ny=dx/len,mx=(ax+bx)/2+nx*bow*len,my=(ay+by)/2+ny*bow*len,N=16,Lp=[],Rp=[];for(let i=0;i<=N;i++){const t=i/N,it=1-t,px=it*it*ax+2*it*t*mx+t*t*bx,py=it*it*ay+2*it*t*my+t*t*by,tx=2*it*(mx-ax)+2*t*(bx-mx),ty=2*it*(my-ay)+2*t*(by-my),tl=Math.hypot(tx,ty)||1,ox=-ty/tl,oy=tx/tl,w=(w0*(1-t)+w1*t)*(0.72+0.28*Math.sin(Math.PI*t));Lp.push([px+ox*w/2,py+oy*w/2]);Rp.push([px-ox*w/2,py-oy*w/2]);}x.beginPath();x.moveTo(Lp[0][0],Lp[0][1]);for(const p of Lp)x.lineTo(p[0],p[1]);for(let i=Rp.length-1;i>=0;i--)x.lineTo(Rp[i][0],Rp[i][1]);x.closePath();x.fillStyle=col;x.fill();}
+  const seg=(a,b,w0,w1,bow)=>{const A=P(a),B=P(b);stroke(A[0],A[1],B[0],B[1],w0*U,w1*U,bow,ink);};
+  const scx=(P(11)[0]+P(12)[0])/2,scy=(P(11)[1]+P(12)[1])/2,hcx=(P(23)[0]+P(24)[0])/2,hcy=(P(23)[1]+P(24)[1])/2;
+  x.save();x.globalAlpha=0.9;x.shadowColor=glowc;x.shadowBlur=U*0.13;
+  stroke(scx,scy,hcx,hcy,0.13*U,0.10*U,0,ink);
+  seg(11,12,0.05,0.05,0);seg(23,24,0.05,0.05,0);
+  seg(11,13,0.075,0.052,0.05);seg(13,15,0.052,0.03,0.04);
+  seg(12,14,0.075,0.052,-0.05);seg(14,16,0.052,0.03,-0.04);
+  seg(23,25,0.095,0.068,0.03);seg(25,27,0.068,0.04,0.02);
+  seg(24,26,0.095,0.068,-0.03);seg(26,28,0.068,0.04,-0.02);
+  const n=P(0),hr=Math.hypot(n[0]-scx,n[1]-scy)*0.55;
+  x.lineWidth=U*0.05;x.lineCap='round';x.strokeStyle=ink;x.beginPath();x.arc(n[0],n[1]-hr*0.1,hr,Math.PI*0.2,Math.PI*1.95);x.stroke();
+  x.restore();
 }
 function ground(){const g=x.createRadialGradient(300,248,0,300,248,1400);g.addColorStop(0,'#3a2a17');g.addColorStop(.5,'#241a0e');g.addColorStop(1,'#160f07');x.fillStyle=g;x.fillRect(0,0,600,1240);}
 const panda=new Image();
