@@ -6,8 +6,15 @@ a live neon skeleton of you, the **one thing to fix** as a spoken cue, and a hol
 timer that celebrates when you nail it.
 
 Forked from **GHOST** (the rowing coach) — it reuses GHOST's proven, fully
-on-device MediaPipe pose pipeline, the neon "Tron on dusk" look, and the
-numbers-only privacy model. The new part is a **posture-hold engine** (instead of
+on-device MediaPipe pose pipeline and numbers-only privacy model.
+
+**Art direction: "Ink Flow + Ki-Surge burst".** Painterly-anime calm while you
+practise — a cream, brush-outlined figure with a jade glow (gold when you're on
+target), on a deep-jade ground with slow chi ink-ribbons drifting behind. Then,
+the moment you *complete* a hold, a Dragon-Ball-Z-style energy burst fires (gold
++ electric-blue core flash, expanding rings, rising sparks). Calm to practise,
+with a payoff at the reward moment. (Chosen from a 4-way mock-up pitch — see the
+art-direction artifact.) The new part is a **posture-hold engine** (instead of
 rowing stroke segmentation) and a **full-body frontal skeleton** (instead of the
 side-on 6-joint view).
 
@@ -30,9 +37,9 @@ GitHub Pages like GHOST.
 - **Match %** 0–100 in the hero ring. Blends the weighted mean of all joints with
   the *worst* joint, so a single badly-off limb caps the score — you can't "hold" a
   sloppy pose.
-- **Target ghost** — the reference posture drawn (dashed teal) aligned onto your
-  live body: the cartoon you copy. Your live skeleton flares **amber** on the limb
-  that's most off.
+- **Target ghost** — the reference posture drawn (dashed cream/jade) aligned onto
+  your live body: the cartoon you copy. Your live skeleton flares **warm** on the
+  limb that's most off.
 - **One cue at a time** — the worst joint becomes a plain instruction ("straighten
   your left arm", "sink lower", "bring your back upright"), shown and spoken (Web
   Speech API). Anatomically correct left/right (subject's own body).

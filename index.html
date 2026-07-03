@@ -18,16 +18,18 @@
    *  localStorage, clearable in the menu.
    * ========================================================================= */
   :root {
-    --bg:      #0a0e14;
-    --bg2:     #121a26;
-    --ink:     #eaf2f5;
-    --muted:   #8ea6b0;
-    --accent:  #34ffe0;      /* the ghost / good -- vibrant teal */
-    --accentd: #1fb9a6;
-    --amber:   #ffb547;      /* off -- correcting */
-    --red:     #ff6b6b;      /* far off */
-    --panel:   rgba(12,20,30,0.86);
-    --line:    rgba(120,180,190,0.16);
+    /* Ink Flow — painterly-anime calm: deep jade ground, cream figure, jade+gold chi. */
+    --bg:      #08120d;
+    --bg2:     #0f1c16;
+    --ink:     #f3ecd9;      /* cream */
+    --muted:   #9fc7b3;      /* soft jade-grey */
+    --accent:  #4fe0b0;      /* jade -- the ghost / good */
+    --accentd: #35d9a0;
+    --gold:    #e8c07a;      /* chi gold */
+    --amber:   #f0a25f;      /* off -- correcting (warm) */
+    --red:     #e8886a;      /* far off */
+    --panel:   rgba(11,23,18,0.82);
+    --line:    rgba(120,215,170,0.18);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
@@ -36,8 +38,8 @@
   body { display: flex; flex-direction: column; }
 
   header { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px 6px; }
-  header .logo { font-weight: 800; letter-spacing: 3px; font-size: 20px;
-    background: linear-gradient(90deg, var(--accent), #9df); -webkit-background-clip: text;
+  header .logo { font-family: Georgia, "Times New Roman", serif; font-weight: 700; letter-spacing: 5px; font-size: 21px;
+    background: linear-gradient(90deg, var(--accent), var(--gold)); -webkit-background-clip: text;
     background-clip: text; color: transparent; }
   header .tagline { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
 
@@ -66,8 +68,8 @@
 
   #cuewrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
   #cue { background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
-    padding: 10px 18px; font-size: 18px; font-weight: 650; text-align: center; min-height: 20px;
-    max-width: 90%; transition: color .2s; }
+    padding: 10px 18px; font-size: 18px; font-weight: 600; text-align: center; min-height: 20px;
+    max-width: 90%; transition: color .2s; font-family: Georgia, "Times New Roman", serif; }
   #cue.good { color: var(--accent); }
   #cue.hold { color: var(--accent); }
   #holdbar { width: 60%; max-width: 340px; height: 6px; border-radius: 4px;
@@ -296,7 +298,7 @@ const S = {
   postures: [], targetIdx: 0,
   live: null,            // last landmark array
   prevCentroid: null,    // for velocity
-  vel: 1, holdT: 0, lastAchieved: -1,
+  vel: 1, holdT: 0, lastAchieved: -1, burst: null,
   match: 0, worst: null, capturing: false,
 };
 let lastVideoTime = -1, lastCueAt = 0, lastSpoken = "";
@@ -450,40 +452,80 @@ function stopTracks() { if (S.stream) { S.stream.getTracks().forEach((t)=>t.stop
 // ---------------------------------------------------------------------------
 //  Drawing -- neon frontal skeleton over a dusk stage
 // ---------------------------------------------------------------------------
+const _reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 function drawBackdrop() {
   const W = canvas.width, H = canvas.height;
-  const g = ctx.createRadialGradient(W/2, H*0.1, 0, W/2, H*0.1, H*1.1);
-  g.addColorStop(0, "#1b2740"); g.addColorStop(0.55, "#0c1220"); g.addColorStop(1, "#070a10");
+  const g = ctx.createRadialGradient(W/2, H*0.14, 0, W/2, H*0.14, H*1.15);
+  g.addColorStop(0, "#132821"); g.addColorStop(0.55, "#0c1a14"); g.addColorStop(1, "#08120d");
   ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  drawInkRibbons(W, H);
+}
+/* Ambient chi: two slow flowing ink ribbons (jade + gold), low alpha. */
+function drawInkRibbons(W, H) {
+  const t = _reduceMotion ? 0 : performance.now() / 3400;
+  const ribbons = [
+    { col:"rgba(53,217,160,0.16)", w:W*0.055, ph:0,   yb:0.55, amp:0.10 },
+    { col:"rgba(232,192,122,0.13)", w:W*0.035, ph:2.1, yb:0.42, amp:0.14 },
+  ];
+  ctx.save(); ctx.lineCap = "round";
+  for (const r of ribbons) {
+    ctx.strokeStyle = r.col; ctx.lineWidth = r.w;
+    ctx.shadowColor = r.col; ctx.shadowBlur = r.w * 1.4;
+    ctx.beginPath();
+    for (let i = 0; i <= 20; i++) {
+      const u = i / 20, x = u * W;
+      const y = H * (r.yb + r.amp * Math.sin(u * 4.2 + t + r.ph) + 0.12 * Math.sin(u * 1.7 - t * 0.6));
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore(); ctx.shadowBlur = 0;
 }
 
-/* Draw a skeleton from a live-landmark array in screen space. flareSet =
-   set of landmark indices to flare (the off limb), col overrides. */
-function drawLiveSkeleton(lm, col, flareKeys) {
+/* Ink Flow palette for the live figure (canvas needs literal colours — it
+   cannot resolve CSS var()). `good` swaps the jade glow for a warm gold. */
+const INK = {
+  outline:"#0b1712", cream:"#f3ecd9",
+  glowJade:"rgba(53,217,160,0.55)", glowGold:"rgba(232,192,122,0.78)",
+  flare:"#f0a25f", flareGlow:"rgba(240,150,90,0.65)",
+};
+/* Draw the figure: a cream stroke over a dark brush under-outline (the
+   painterly-anime look), jade glow — or gold when on target. flareKeys = the
+   off limb, painted warm. */
+function drawLiveSkeleton(lm, good, flareKeys) {
   const W = canvas.width, H = canvas.height;
   const R = Math.max(4, W/120);
   const flareIdx = flareKeys || new Set();
+  const glow = good ? INK.glowGold : INK.glowJade;
+  ctx.lineCap = "round";
   for (const [a,b] of BONES) {
     const pa = lm[a], pb = lm[b];
     if (!pa || !pb || (pa.visibility??0)<CFG.VIS_MIN || (pb.visibility??0)<CFG.VIS_MIN) continue;
     const hot = flareIdx.has(a) && flareIdx.has(b);
-    ctx.strokeStyle = hot ? "var(--amber)" : col.limb;
-    ctx.lineWidth = R * (hot ? 1.5 : 1.1); ctx.lineCap = "round";
-    ctx.shadowColor = hot ? "rgba(255,181,71,0.6)" : col.glow; ctx.shadowBlur = R*2.4;
-    ctx.beginPath(); ctx.moveTo(pa.x*W, pa.y*H); ctx.lineTo(pb.x*W, pb.y*H); ctx.stroke();
+    const x1=pa.x*W, y1=pa.y*H, x2=pb.x*W, y2=pb.y*H;
+    ctx.strokeStyle = INK.outline; ctx.lineWidth = R*(hot?2.0:1.7); ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    ctx.strokeStyle = hot ? INK.flare : INK.cream; ctx.lineWidth = R*(hot?1.35:1.05);
+    ctx.shadowColor = hot ? INK.flareGlow : glow; ctx.shadowBlur = R*2.4;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
   }
   ctx.shadowBlur = 0;
   for (const i of [LM.L_SHOULDER,LM.R_SHOULDER,LM.L_ELBOW,LM.R_ELBOW,LM.L_WRIST,LM.R_WRIST,
                    LM.L_HIP,LM.R_HIP,LM.L_KNEE,LM.R_KNEE,LM.L_ANKLE,LM.R_ANKLE]) {
     const p = lm[i]; if (!p || (p.visibility??0)<CFG.VIS_MIN) continue;
-    ctx.fillStyle = col.node; ctx.shadowColor = col.glow; ctx.shadowBlur = R*1.6;
-    ctx.beginPath(); ctx.arc(p.x*W, p.y*H, R*0.7, 0, 7); ctx.fill();
+    const cx=p.x*W, cy=p.y*H;
+    ctx.fillStyle = INK.outline; ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.arc(cx,cy,R*0.9,0,7); ctx.fill();
+    ctx.fillStyle = INK.cream; ctx.shadowColor = glow; ctx.shadowBlur = R*1.6;
+    ctx.beginPath(); ctx.arc(cx,cy,R*0.6,0,7); ctx.fill();
   }
-  // head ring
+  ctx.shadowBlur = 0;
   const n = lm[LM.NOSE];
   if (n && (n.visibility??0)>=CFG.VIS_MIN) {
-    ctx.strokeStyle = col.node; ctx.lineWidth = R*0.4;
-    ctx.beginPath(); ctx.arc(n.x*W, n.y*H, R*1.6, 0, 7); ctx.stroke();
+    ctx.strokeStyle = INK.outline; ctx.lineWidth = R*0.75; ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.arc(n.x*W, n.y*H, R*1.7, 0, 7); ctx.stroke();
+    ctx.strokeStyle = INK.cream; ctx.lineWidth = R*0.4; ctx.shadowColor = glow; ctx.shadowBlur = R*1.4;
+    ctx.beginPath(); ctx.arc(n.x*W, n.y*H, R*1.65, 0, 7); ctx.stroke();
   }
   ctx.shadowBlur = 0;
 }
@@ -502,15 +544,46 @@ function drawTargetGhost(refPts, liveLm) {
   ctx.save(); ctx.globalAlpha = 0.5;
   for (const [a,b] of BONES) {
     const pa = scr(a), pb = scr(b); if (!pa || !pb) continue;
-    ctx.strokeStyle = "rgba(120,230,220,0.55)"; ctx.lineWidth = R*0.9; ctx.lineCap="round";
+    ctx.strokeStyle = "rgba(196,232,206,0.5)"; ctx.lineWidth = R*0.9; ctx.lineCap="round";
     ctx.setLineDash([R*1.2, R*1.2]);
     ctx.beginPath(); ctx.moveTo(pa[0],pa[1]); ctx.lineTo(pb[0],pb[1]); ctx.stroke();
   }
   ctx.setLineDash([]); ctx.restore();
 }
 
-const COL_LIVE = { limb:"rgba(52,255,224,0.85)", glow:"rgba(40,200,190,0.5)", node:"rgba(200,255,250,0.9)" };
-const COL_GOOD = { limb:"rgba(52,255,224,1)",    glow:"rgba(52,255,224,0.7)", node:"#dffff9" };
+
+/* Ki-Surge reward burst — fires once when a posture is held. Additive gold +
+   electric-blue: a core flash, expanding rings, and rising sparks. */
+const BURST_MS = 1300;
+function drawBurst(p, lm) {
+  const W = canvas.width, H = canvas.height;
+  const cx = ((lm[LM.L_SHOULDER].x+lm[LM.R_SHOULDER].x+lm[LM.L_HIP].x+lm[LM.R_HIP].x)/4)*W;
+  const cy = ((lm[LM.L_SHOULDER].y+lm[LM.R_SHOULDER].y+lm[LM.L_HIP].y+lm[LM.R_HIP].y)/4)*H;
+  const R = Math.max(6, W/70);
+  const ease = 1 - Math.pow(1-p, 2);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  const cr = R*4*(0.4 + ease*1.4);
+  const cg = ctx.createRadialGradient(cx,cy,0,cx,cy,cr);
+  cg.addColorStop(0, `rgba(255,246,214,${0.55*(1-p)})`);
+  cg.addColorStop(0.4, `rgba(232,192,122,${0.3*(1-p)})`);
+  cg.addColorStop(1, "rgba(77,184,255,0)");
+  ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx,cy,cr,0,7); ctx.fill();
+  for (const [rr, col] of [[ease, "232,192,122"], [ease*0.7, "127,208,255"]]) {
+    ctx.strokeStyle = `rgba(${col},${0.6*(1-p)})`; ctx.lineWidth = R*0.35*(1-p*0.6);
+    ctx.beginPath(); ctx.arc(cx,cy, R*(1.5 + rr*11), 0, 7); ctx.stroke();
+  }
+  const N = 14;
+  for (let i=0;i<N;i++){
+    const a = (i/N)*Math.PI*2 + i;
+    const dist = R*(2 + ease*9);
+    const sx = cx + Math.cos(a)*dist*0.7;
+    const sy = cy + Math.sin(a)*dist*0.5 - ease*R*6;   // drift upward
+    ctx.fillStyle = i%3 ? `rgba(232,192,122,${1-p})` : `rgba(255,255,255,${1-p})`;
+    ctx.beginPath(); ctx.arc(sx,sy, Math.max(0.5, R*0.28*(1-p)), 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
 
 // ---------------------------------------------------------------------------
 //  Main loop
@@ -540,7 +613,7 @@ function processPose(lm) {
 
   drawBackdrop();
   const ref = S.postures[S.targetIdx];
-  if (!ref) { drawLiveSkeleton(lm, COL_LIVE); setCue("No posture selected", ""); setMatch(null); return; }
+  if (!ref) { drawLiveSkeleton(lm, false); setCue("No posture selected", ""); setMatch(null); return; }
 
   const live = fingerprint(lm);
   const { match, worst } = comparePose(live, ref.fp);
@@ -549,7 +622,8 @@ function processPose(lm) {
   const good = match >= CFG.HOLD_MATCH_MIN;
   drawTargetGhost(ref.fp.pts, lm);
   const flare = (!good && worst) ? flareKeysFor(worst.key) : null;
-  drawLiveSkeleton(lm, good ? COL_GOOD : COL_LIVE, flare);
+  drawLiveSkeleton(lm, good, flare);
+  if (S.burst != null) { const bp = (performance.now() - S.burst) / BURST_MS; if (bp <= 1) drawBurst(bp, lm); else S.burst = null; }
 
   setMatch(match);
 
@@ -560,6 +634,7 @@ function processPose(lm) {
     holdfill.style.width = Math.min(100, 100*S.holdT/CFG.HOLD_SECONDS) + "%";
     if (S.holdT >= CFG.HOLD_SECONDS && S.lastAchieved !== S.targetIdx) {
       S.lastAchieved = S.targetIdx;
+      S.burst = performance.now();          // Ki-Surge reward burst
       setCue("Held — beautiful", "held — nice work", "good");
       chime(); speak("Nice. Posture held.");
     } else if (S.holdT < CFG.HOLD_SECONDS) {
@@ -710,7 +785,7 @@ async function start() {
   try { if (!S.poseLandmarker) await loadModel(); await startCamera(); }
   catch { startBtn.disabled=false; startBtn.textContent="Start"; return; }
   hideOverlay();
-  S.running = true; S.holdT = 0; S.lastAchieved = -1; S.prevCentroid = null;
+  S.running = true; S.holdT = 0; S.lastAchieved = -1; S.prevCentroid = null; S.burst = null;
   startBtn.textContent = "Stop"; startBtn.classList.add("stop"); startBtn.disabled = false;
   lastVideoTime = -1;
   // unlock audio on the user gesture

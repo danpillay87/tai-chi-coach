@@ -1,0 +1,204 @@
+<style>
+  :root{
+    --page:#07090f; --page2:#0c1018; --ink:#eef2f7; --muted:#8b97a8;
+    --hair:rgba(150,170,200,.14);
+  }
+  *{box-sizing:border-box}
+  .wrap{background:
+      radial-gradient(120% 80% at 15% -5%, #131a2b 0%, transparent 55%),
+      radial-gradient(120% 80% at 90% 0%, #17121f 0%, transparent 50%),
+      var(--page);
+    color:var(--ink); min-height:100%; padding:clamp(20px,4vw,56px);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  .lede{max-width:70ch; margin:0 auto 8px;}
+  .eyebrow{font-size:12px; letter-spacing:.28em; text-transform:uppercase; color:var(--muted); margin:0 0 10px;}
+  h1{font-size:clamp(28px,4.4vw,46px); line-height:1.05; margin:0 0 14px; font-weight:800; letter-spacing:-.01em; text-wrap:balance;}
+  h1 em{font-style:normal; background:linear-gradient(90deg,#34ffe0,#ff3fa4 55%,#ffd76b); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .lede p{color:#c3ccd9; font-size:16px; line-height:1.6; margin:0 0 6px;}
+  .lede .fine{color:var(--muted); font-size:13.5px;}
+
+  .grid{max-width:1180px; margin:34px auto 0; display:grid; gap:26px;
+    grid-template-columns:repeat(4,1fr);}
+  @media(max-width:1080px){.grid{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:600px){.grid{grid-template-columns:1fr; max-width:360px;}}
+
+  .card{display:flex; flex-direction:column; gap:14px;}
+  .phone{position:relative; aspect-ratio:300/620; border-radius:30px; overflow:hidden;
+    border:1px solid var(--hair); box-shadow:0 24px 60px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.03);}
+  .phone svg{position:absolute; inset:0; width:100%; height:100%;}
+
+  /* HUD (shared skeleton, themed via custom props on .phone) */
+  .hud{position:absolute; inset:0; padding:14px; display:flex; flex-direction:column; justify-content:space-between; pointer-events:none;}
+  .hrow{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .chip{backdrop-filter:blur(6px); background:var(--chip,rgba(10,16,26,.55)); border:1px solid var(--chipln,rgba(255,255,255,.16));
+    border-radius:11px; padding:7px 11px;}
+  .chip .k{font-size:8px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted2,#9fb0c2); display:block;}
+  .chip .v{font-size:14px; font-weight:700; margin-top:2px; font-family:var(--tf,inherit); letter-spacing:var(--tls,0);}
+  .ringwrap{display:flex; flex-direction:column; align-items:center; gap:2px;}
+  .ringwrap .pct{font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--ring,#fff);}
+  .ringwrap .pl{font-size:8px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted2,#9fb0c2);}
+  .cuewrap{display:flex; flex-direction:column; align-items:center; gap:9px;}
+  .cue{background:var(--chip,rgba(10,16,26,.55)); border:1px solid var(--chipln,rgba(255,255,255,.16)); border-radius:13px;
+    padding:8px 15px; font-size:15px; font-weight:700; text-align:center; color:var(--cuecol,#fff);
+    font-family:var(--tf,inherit); letter-spacing:var(--tls,0); text-transform:var(--cuett,none);}
+  .hold{width:62%; height:6px; border-radius:4px; background:rgba(255,255,255,.12); overflow:hidden;}
+  .hold i{display:block; height:100%; width:72%; border-radius:4px; background:var(--holdfill,#fff);}
+
+  .meta{display:flex; flex-direction:column; gap:8px;}
+  .name{display:flex; align-items:baseline; gap:9px; flex-wrap:wrap;}
+  .name h3{margin:0; font-size:18px; font-weight:800; letter-spacing:.02em;}
+  .name .ref{font-size:11px; color:var(--muted);}
+  .swatches{display:flex; gap:6px;}
+  .swatches span{width:20px; height:20px; border-radius:6px; border:1px solid rgba(255,255,255,.14);}
+  .desc{color:#b9c2d0; font-size:13.5px; line-height:1.5; margin:0;}
+  .tags{display:flex; flex-wrap:wrap; gap:6px; margin-top:2px;}
+  .tags span{font-size:11px; color:var(--muted); border:1px solid var(--hair); border-radius:20px; padding:3px 9px;}
+
+  .foot{max-width:70ch; margin:40px auto 0; color:var(--muted); font-size:13px; line-height:1.6; border-top:1px solid var(--hair); padding-top:18px;}
+  .foot b{color:#c3ccd9; font-weight:700;}
+  @media(prefers-reduced-motion:no-preference){
+    .pulse{animation:pulse 3.4s ease-in-out infinite;}
+    @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+    .drift{animation:drift 6s ease-in-out infinite;}
+    @keyframes drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  }
+</style>
+
+<div class="wrap">
+  <div class="lede">
+    <p class="eyebrow">STILL · art direction pitch</p>
+    <h1>Four looks for the <em>same posture</em>.</h1>
+    <p>Each phone below is STILL's live practice screen — the glowing figure you copy, the match ring, the one-line cue, the hold bar. The pose is identical in all four (<b style="color:#c3ccd9">Hold up the heavens</b>, drawn from the real captured joint data), so the only thing changing is the <b style="color:#c3ccd9">visual language</b>.</p>
+    <p class="fine">Left to right: today's build, then three new directions. Each is an original treatment — inspired by a genre, not copied from any specific title or character.</p>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <p class="foot">
+    <b>On "without ripping anyone off":</b> none of these use another production's characters, logos, exact palettes or assets — they're original treatments that borrow a genre's energy (shonen power-up, K-pop stage-fantasy, painterly anime calm). <br><br>
+    <b>Pick one</b> — or mix (e.g. Ink Flow's calm figure with Ki Surge's hold-complete burst). Whatever you choose, I apply it to the live figure, the aura/effects, the HUD, the fonts, and the "posture held" moment, then screenshot it back for a final look before it lands in the app.
+  </p>
+</div>
+
+<script>
+// Real captured joints (normalised, hip-centred; x→right, y→up is negative) for "Hold up the heavens".
+const J = {
+  0:[-0.001,-1.261], 11:[0.323,-1.001],12:[-0.356,-0.998],
+  13:[0.496,-1.461],14:[-0.517,-1.474], 15:[0.251,-1.956],16:[-0.318,-1.923],
+  23:[0.238,-0.008],24:[-0.238,0.008], 25:[0.289,0.744],26:[-0.305,0.728],
+  27:[0.378,1.406],28:[-0.362,1.421]
+};
+const BONES=[[11,12],[23,24],[11,23],[12,24],[11,13],[13,15],[12,14],[14,16],[23,25],[25,27],[24,26],[26,28]];
+const NODES=[11,12,13,14,15,16,23,24,25,26,27,28];
+const VB={w:300,h:620,cx:150,cy:392,s:150};
+const P=(i)=>[VB.cx+J[i][0]*VB.s, VB.cy+J[i][1]*VB.s];
+
+function figure(stroke,lw,cap){
+  let d="";
+  for(const[a,b]of BONES){const A=P(a),B=P(b);d+=`<line x1="${A[0].toFixed(1)}" y1="${A[1].toFixed(1)}" x2="${B[0].toFixed(1)}" y2="${B[1].toFixed(1)}" stroke="${stroke}" stroke-width="${lw}" stroke-linecap="${cap||'round'}"/>`;}
+  for(const i of NODES){const A=P(i);d+=`<circle cx="${A[0].toFixed(1)}" cy="${A[1].toFixed(1)}" r="${lw*0.72}" fill="${stroke}"/>`;}
+  const n=P(0),sh=[(P(11)[0]+P(12)[0])/2,(P(11)[1]+P(12)[1])/2];
+  const hr=Math.hypot(n[0]-sh[0],n[1]-sh[1])*0.62;
+  d+=`<circle cx="${n[0].toFixed(1)}" cy="${(n[1]-hr*0.2).toFixed(1)}" r="${hr.toFixed(1)}" fill="none" stroke="${stroke}" stroke-width="${lw}"/>`;
+  return d;
+}
+
+const DIRS=[
+  {
+    id:"current", name:"Current (v0)", ref:"today's build",
+    swatches:["#34ffe0","#1b2740","#0a0e14","#8ea6b0"],
+    desc:"The rowing-coach look, ported over: a clean neon-teal skeleton on a dusk gradient. Calm and legible — but generic, and it doesn't say tai chi.",
+    tags:["neon-teal","dusk","minimal"],
+    vars:{"--ring":"#34ffe0","--holdfill":"#34ffe0","--cuecol":"#34ffe0"},
+    bg:`<defs><radialGradient id="cg" cx="50%" cy="12%" r="110%"><stop offset="0%" stop-color="#1b2740"/><stop offset="55%" stop-color="#0c1220"/><stop offset="100%" stop-color="#070a10"/></radialGradient></defs><rect width="300" height="620" fill="url(#cg)"/>`,
+    aura:``,
+    fig:()=>`<g filter="url(#glowC)">${figure("#34ffe0",5)}</g><defs><filter id="glowC" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`,
+    cue:"Hold it… 2s", cuett:"none"
+  },
+  {
+    id:"ki", name:"Ki Surge", ref:"shonen power-up",
+    swatches:["#4db8ff","#ffd76b","#ffffff","#0a0f26"],
+    desc:"Dragon-Ball-Z energy. Your body becomes the source: a white-hot core, gold chi rising in streaks, an electric-blue aura snapping off the limbs. Nailing a hold triggers a power-up burst.",
+    tags:["ki aura","gold + electric blue","upward energy","burst on hold"],
+    vars:{"--ring":"#7fd0ff","--holdfill":"linear-gradient(90deg,#ffd76b,#fff)","--cuecol":"#eaf6ff","--tf":"system-ui","--tls":".02em","--cuett":"uppercase","--chip":"rgba(8,14,34,.5)","--chipln":"rgba(120,190,255,.28)","--muted2":"#9bc4ee"},
+    bg:`<defs><radialGradient id="kg" cx="50%" cy="60%" r="90%"><stop offset="0%" stop-color="#141a3a"/><stop offset="60%" stop-color="#080c22"/><stop offset="100%" stop-color="#04050f"/></radialGradient></defs><rect width="300" height="620" fill="url(#kg)"/>`,
+    aura:`<g class="pulse"><ellipse cx="150" cy="360" rx="120" ry="230" fill="url(#kcore)"/></g>
+      <defs><radialGradient id="kcore" cx="50%" cy="55%" r="55%"><stop offset="0%" stop-color="rgba(255,244,210,.55)"/><stop offset="35%" stop-color="rgba(255,199,90,.28)"/><stop offset="100%" stop-color="rgba(80,130,255,0)"/></radialGradient></defs>
+      ${[...Array(9)].map((_,i)=>{const x=60+i*22+(i%2?6:0);const h=40+((i*37)%60);return `<line class="drift" style="animation-delay:${(i*0.4).toFixed(1)}s" x1="${x}" y1="${470-((i*53)%90)}" x2="${x}" y2="${470-((i*53)%90)-h}" stroke="rgba(255,214,120,.5)" stroke-width="2" stroke-linecap="round"/>`;}).join("")}`,
+    fig:()=>`<g filter="url(#glowK)">${figure("#eaf6ff",5.5)}</g>
+      <defs><filter id="glowK" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6" result="b"/><feFlood flood-color="#4db8ff" flood-opacity="0.9" result="c"/><feComposite in="c" in2="b" operator="in" result="cb"/><feMerge><feMergeNode in="cb"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`,
+    cue:"Rise into it", cuett:"uppercase"
+  },
+  {
+    id:"idol", name:"Neon Idol", ref:"K-pop stage-fantasy",
+    swatches:["#ff3fa4","#35e0ff","#9a5cff","#ffd36b"],
+    desc:"Stage-lit and glossy — the demon-hunter-K-pop energy. A magenta/cyan split rim-light wraps the figure, a geometric 'gate' talisman glows behind, light-petals drift. Cool, mystical, fashion-forward.",
+    tags:["magenta ↔ cyan","stage glow","talisman motif","glossy"],
+    vars:{"--ring":"#ff5bb2","--holdfill":"linear-gradient(90deg,#ff3fa4,#35e0ff)","--cuecol":"#ffe6f4","--tf":"system-ui","--tls":".14em","--cuett":"uppercase","--chip":"rgba(26,10,36,.5)","--chipln":"rgba(255,63,164,.3)","--muted2":"#d7a7d0"},
+    bg:`<defs><radialGradient id="ig" cx="30%" cy="18%" r="120%"><stop offset="0%" stop-color="#2a0f3a"/><stop offset="55%" stop-color="#160a24"/><stop offset="100%" stop-color="#0b0616"/></radialGradient></defs><rect width="300" height="620" fill="url(#ig)"/>`,
+    aura:`<g class="pulse" opacity=".85"><polygon points="150,150 250,360 150,600 50,360" fill="none" stroke="url(#gate)" stroke-width="2"/><polygon points="150,205 205,360 150,545 95,360" fill="none" stroke="rgba(53,224,255,.35)" stroke-width="1.5"/></g>
+      <defs><linearGradient id="gate" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff3fa4"/><stop offset="100%" stop-color="#35e0ff"/></linearGradient></defs>
+      ${[...Array(7)].map((_,i)=>`<circle class="drift" style="animation-delay:${(i*0.5).toFixed(1)}s" cx="${40+i*34}" cy="${140+((i*71)%360)}" r="${2+i%3}" fill="${i%2?'rgba(53,224,255,.6)':'rgba(255,63,164,.6)'}"/>`).join("")}`,
+    fig:()=>`<g filter="url(#glowM)" opacity=".9" transform="translate(-3,0)">${figure("#ff3fa4",5)}</g>
+      <g filter="url(#glowC2)" opacity=".9" transform="translate(3,0)">${figure("#35e0ff",5)}</g>
+      <g>${figure("#fff",3)}</g>
+      <defs>
+        <filter id="glowM" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5"/></filter>
+        <filter id="glowC2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5"/></filter>
+      </defs>`,
+    cue:"Open the gate", cuett:"uppercase"
+  },
+  {
+    id:"ink", name:"Ink Flow", ref:"painterly anime calm",
+    swatches:["#35d9a0","#e8c07a","#f3ecd9","#0b1712"],
+    desc:"The quiet one — modern-anime calm, Ghibli-meets-Pokémon. Chi flows as jade-and-gold ink ribbons around a soft cream figure with a rounded brush outline. Elegant, meditative, most true to tai chi's spirit.",
+    tags:["jade + gold","ink ribbons","brush outline","calm"],
+    vars:{"--ring":"#4fe0b0","--holdfill":"linear-gradient(90deg,#35d9a0,#e8c07a)","--cuecol":"#f3ecd9","--tf":"Georgia,'Times New Roman',serif","--tls":".01em","--cuett":"none","--chip":"rgba(11,23,18,.55)","--chipln":"rgba(120,215,170,.26)","--muted2":"#9fc7b3"},
+    bg:`<defs><radialGradient id="nkg" cx="50%" cy="16%" r="115%"><stop offset="0%" stop-color="#132821"/><stop offset="55%" stop-color="#0c1a14"/><stop offset="100%" stop-color="#08120d"/></radialGradient></defs><rect width="300" height="620" fill="url(#nkg)"/>`,
+    aura:`<g class="drift" opacity=".8" fill="none" stroke-linecap="round">
+        <path d="M60,470 C10,360 90,300 150,330 C220,365 300,300 250,190" stroke="url(#ink1)" stroke-width="9"/>
+        <path d="M235,500 C300,400 220,340 160,370" stroke="url(#ink2)" stroke-width="6"/>
+      </g>
+      <defs>
+        <linearGradient id="ink1" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="rgba(53,217,160,0)"/><stop offset="50%" stop-color="rgba(53,217,160,.55)"/><stop offset="100%" stop-color="rgba(53,217,160,0)"/></linearGradient>
+        <linearGradient id="ink2" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="rgba(232,192,122,0)"/><stop offset="55%" stop-color="rgba(232,192,122,.5)"/><stop offset="100%" stop-color="rgba(232,192,122,0)"/></linearGradient>
+      </defs>`,
+    fig:()=>`<g filter="url(#glowN)">${figure("#0b1712",9)}${figure("#f3ecd9",5)}</g>
+      <defs><filter id="glowN" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="3" result="b"/><feFlood flood-color="#35d9a0" flood-opacity="0.5" result="c"/><feComposite in="c" in2="b" operator="in" result="cb"/><feMerge><feMergeNode in="cb"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`,
+    cue:"Let it settle", cuett:"none"
+  }
+];
+
+const grid=document.getElementById("grid");
+for(const d of DIRS){
+  const styleVars=Object.entries(d.vars||{}).map(([k,v])=>`${k}:${v}`).join(";");
+  const el=document.createElement("div");
+  el.className="card";
+  el.innerHTML=`
+    <div class="phone" style="${styleVars}">
+      <svg viewBox="0 0 300 620" preserveAspectRatio="xMidYMid slice">
+        ${d.bg}${d.aura}${d.fig()}
+      </svg>
+      <div class="hud">
+        <div class="hrow">
+          <div class="chip"><span class="k">Target</span><span class="v">Hold up the heavens</span></div>
+          <div class="ringwrap">
+            <svg width="52" height="52" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="9"/><circle cx="50" cy="50" r="42" fill="none" stroke="${d.vars&&d.vars['--ring']||'#fff'}" stroke-width="9" stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="32" transform="rotate(-90 50 50)"/></svg>
+            <span class="pct">88<span style="font-size:11px">%</span></span><span class="pl">match</span>
+          </div>
+        </div>
+        <div class="cuewrap">
+          <div class="cue">${d.cue}</div>
+          <div class="hold"><i></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="meta">
+      <div class="name"><h3>${d.name}</h3><span class="ref">${d.ref}</span></div>
+      <div class="swatches">${d.swatches.map(c=>`<span style="background:${c}"></span>`).join("")}</div>
+      <p class="desc">${d.desc}</p>
+      <div class="tags">${d.tags.map(t=>`<span>${t}</span>`).join("")}</div>
+    </div>`;
+  grid.appendChild(el);
+}
+</script>
