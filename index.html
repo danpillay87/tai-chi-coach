@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>STILL &middot; move your ghost</title>
+<style>
+  /* ===========================================================================
+   *  STILL -- a solo tai-chi / posture trainer.  PoC.
+   *  Forked from GHOST (the rowing coach): reuses its proven, on-device
+   *  MediaPipe pose pipeline, neon "Tron on dusk" look, and numbers-only
+   *  privacy model -- but with a POSTURE-HOLD engine instead of stroke
+   *  segmentation, and a full-body frontal skeleton.
+   *
+   *  PRIVACY (inherited, non-negotiable): frames are read for pose and
+   *  discarded every frame. Nothing is recorded or uploaded. Only derived
+   *  NUMBERS (joint angles + normalised reference postures) persist, in
+   *  localStorage, clearable in the menu.
+   * ========================================================================= */
+  :root {
+    --bg:      #0a0e14;
+    --bg2:     #121a26;
+    --ink:     #eaf2f5;
+    --muted:   #8ea6b0;
+    --accent:  #34ffe0;      /* the ghost / good -- vibrant teal */
+    --accentd: #1fb9a6;
+    --amber:   #ffb547;      /* off -- correcting */
+    --red:     #ff6b6b;      /* far off */
+    --panel:   rgba(12,20,30,0.86);
+    --line:    rgba(120,180,190,0.16);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+  body { display: flex; flex-direction: column; }
+
+  header { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px 6px; }
+  header .logo { font-weight: 800; letter-spacing: 3px; font-size: 20px;
+    background: linear-gradient(90deg, var(--accent), #9df); -webkit-background-clip: text;
+    background-clip: text; color: transparent; }
+  header .tagline { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
+
+  #stage { position: relative; flex: 1; min-height: 0; margin: 4px 10px 0;
+    border-radius: 18px; overflow: hidden; background:
+      radial-gradient(120% 90% at 50% 8%, #1b2740 0%, #0c1220 55%, #070a10 100%);
+    box-shadow: inset 0 0 0 1px var(--line), 0 10px 40px rgba(0,0,0,0.5); }
+  #video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+    opacity: 0; transition: opacity .3s; }
+  #video.show { opacity: 0.28; }
+  #canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  /* HUD */
+  #hud { position: absolute; inset: 0; pointer-events: none; padding: 14px;
+    display: flex; flex-direction: column; justify-content: space-between; }
+  #topline { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  #target { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 8px 12px; max-width: 60%; }
+  #target .lbl { font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
+  #target .name { font-size: 17px; font-weight: 700; margin-top: 2px; }
+  #ring { display: flex; flex-direction: column; align-items: center; }
+  #ringSvg { width: 76px; height: 76px; }
+  #ringPct { font-size: 20px; font-weight: 800; }
+  #ringPct small { font-size: 11px; font-weight: 600; color: var(--muted); }
+  #ringLbl { font-size: 9px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+
+  #cuewrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  #cue { background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 10px 18px; font-size: 18px; font-weight: 650; text-align: center; min-height: 20px;
+    max-width: 90%; transition: color .2s; }
+  #cue.good { color: var(--accent); }
+  #cue.hold { color: var(--accent); }
+  #holdbar { width: 60%; max-width: 340px; height: 6px; border-radius: 4px;
+    background: rgba(255,255,255,0.08); overflow: hidden; }
+  #holdfill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accentd), var(--accent));
+    transition: width .1s linear; }
+
+  /* Controls */
+  #controls { display: flex; gap: 10px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+    align-items: center; }
+  button { font: inherit; color: var(--ink); background: #16202e; border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px 16px; font-weight: 650; cursor: pointer; min-height: 46px;
+    transition: transform .05s, background .15s, border-color .15s; }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.4; cursor: default; }
+  button.primary { flex: 1; background: linear-gradient(90deg, var(--accentd), var(--accent));
+    color: #04211d; border: none; font-weight: 800; letter-spacing: .5px; }
+  button.primary.stop { background: linear-gradient(90deg, #b23a3a, var(--red)); color: #fff; }
+  button.icon { min-width: 46px; padding: 12px; }
+  select { font: inherit; color: var(--ink); background: #16202e; border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px; font-weight: 650; min-height: 46px; flex: 1; }
+
+  /* Overlay + sheet */
+  #overlay { position: absolute; inset: 0; background: rgba(6,10,16,0.9); display: flex;
+    flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    padding: 30px; gap: 8px; z-index: 5; }
+  #overlay.hidden { display: none; }
+  #overlay h2 { margin: 0; font-size: 20px; }
+  #overlay p { margin: 0; color: var(--muted); max-width: 30em; line-height: 1.5; font-size: 14px; }
+  #overlay code { background: #1b2836; padding: 2px 6px; border-radius: 6px; color: var(--accent); }
+
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--bg2);
+    border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; padding: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateY(110%);
+    transition: transform .28s cubic-bezier(.3,.8,.3,1); max-height: 80vh; overflow-y: auto; }
+  .sheet.open { transform: translateY(0); }
+  .sheet h3 { margin: 0 0 4px; font-size: 15px; }
+  .sheet p.note { color: var(--muted); font-size: 12px; margin: 0 0 14px; line-height: 1.5; }
+  .sheet .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .plist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .pitem { display: flex; align-items: center; gap: 10px; background: #16202e; border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 12px; }
+  .pitem .nm { flex: 1; font-weight: 650; }
+  .pitem .sm { color: var(--muted); font-size: 12px; }
+  .pitem button { padding: 8px 10px; min-height: 38px; font-size: 13px; }
+  #scrim { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 15; opacity: 0;
+    pointer-events: none; transition: opacity .28s; }
+  #scrim.open { opacity: 1; pointer-events: auto; }
+  #countdown { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    font-size: 120px; font-weight: 900; color: var(--accent); text-shadow: 0 0 40px rgba(52,255,224,.6);
+    z-index: 8; }
+  #countdown.show { display: flex; }
+  .privacy { color: var(--muted); font-size: 11px; text-align: center; padding: 0 16px 6px; line-height: 1.4; }
+</style>
+</head>
+<body>
+  <header>
+    <span class="logo">STILL</span>
+    <span class="tagline">move your ghost</span>
+  </header>
+
+  <div id="stage">
+    <video id="video" playsinline muted></video>
+    <canvas id="canvas"></canvas>
+    <div id="countdown"></div>
+
+    <div id="hud">
+      <div id="topline">
+        <div id="target">
+          <div class="lbl">Target posture</div>
+          <div class="name" id="targetName">—</div>
+        </div>
+        <div id="ring">
+          <svg id="ringSvg" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="9"/>
+            <circle id="ringArc" cx="50" cy="50" r="42" fill="none" stroke="var(--accent)" stroke-width="9"
+              stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="264"
+              transform="rotate(-90 50 50)"/>
+          </svg>
+          <div id="ringPct">—</div>
+          <div id="ringLbl">match</div>
+        </div>
+      </div>
+
+      <div id="cuewrap">
+        <div id="cue">Press Start</div>
+        <div id="holdbar"><div id="holdfill"></div></div>
+      </div>
+    </div>
+
+    <div id="overlay">
+      <h2>STILL</h2>
+      <p>A calm, on-device posture coach. Stand back so your <b>whole body</b> is in frame,
+         facing the camera. Pick a posture, and STILL guides you into it — a glowing target
+         to match, and a quiet cue for the one thing to fix. Move slowly, like tai chi.</p>
+      <p>Nothing you film is recorded or uploaded. Frames are read and discarded; only the
+         numbers stay on this device.</p>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button id="startBtn" class="primary">Start</button>
+    <select id="postureSel" title="Choose the posture to practise"></select>
+    <button id="videoBtn" class="icon" title="Show/hide the camera feed">👁</button>
+    <button id="menuBtn" class="icon" title="Postures &amp; settings">⋯</button>
+  </div>
+  <div class="privacy">On-device · frames never saved or uploaded · numbers only</div>
+
+  <div id="scrim"></div>
+  <div class="sheet" id="sheet">
+    <h3>Postures</h3>
+    <p class="note">STILL guides you into the selected posture and scores how close you are. Capture your
+       own by getting into the pose and pressing <b>Capture new</b> — a 3-second countdown gives you time to
+       settle. Your captures are the reference to match. (Two sample postures ship so it works out of the box.)</p>
+    <div class="plist" id="plist"></div>
+    <div class="row">
+      <button id="captureBtn" class="primary">＋ Capture new posture</button>
+    </div>
+    <h3>Data</h3>
+    <p class="note">Everything lives on this device. Reference postures are stored as normalised numbers —
+       never images.</p>
+    <div class="row">
+      <button id="voiceBtn">Voice cues: ON</button>
+      <button id="resetBtn">Reset sample postures</button>
+      <button id="clearBtn">Clear all postures</button>
+    </div>
+  </div>
+
+<script type="module">
+"use strict";
+
+/* ---------------------------------------------------------------------------
+ *  MediaPipe -- lifted verbatim from GHOST (pinned, CDN-verified 0.10.20:
+ *  ships BOTH the ESM bundle and the matching /wasm folder; keeping them on
+ *  the same version avoids ABI mismatches).
+ * ------------------------------------------------------------------------- */
+const MP_VERSION = "0.10.20";
+const MP_BUNDLE  = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/vision_bundle.mjs`;
+const MP_WASM    = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VERSION}/wasm`;
+const MODEL_FULL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task";
+const MODEL_LITE = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
+
+/* BlazePose 33-landmark indices (subject's own left/right). */
+const LM = {
+  NOSE: 0,
+  L_SHOULDER: 11, R_SHOULDER: 12, L_ELBOW: 13, R_ELBOW: 14, L_WRIST: 15, R_WRIST: 16,
+  L_HIP: 23, R_HIP: 24, L_KNEE: 25, R_KNEE: 26, L_ANKLE: 27, R_ANKLE: 28,
+};
+
+/* Full-body skeleton bones (frontal view -- both sides). */
+const BONES = [
+  [LM.L_SHOULDER, LM.R_SHOULDER], [LM.L_HIP, LM.R_HIP],
+  [LM.L_SHOULDER, LM.L_HIP], [LM.R_SHOULDER, LM.R_HIP],
+  [LM.L_SHOULDER, LM.L_ELBOW], [LM.L_ELBOW, LM.L_WRIST],
+  [LM.R_SHOULDER, LM.R_ELBOW], [LM.R_ELBOW, LM.R_WRIST],
+  [LM.L_HIP, LM.L_KNEE], [LM.L_KNEE, LM.L_ANKLE],
+  [LM.R_HIP, LM.R_KNEE], [LM.R_KNEE, LM.R_ANKLE],
+];
+
+/* The posture "fingerprint": rotation/scale/position-invariant joint angles.
+ * Each entry is a joint triplet (angle at b, between a-b and c-b) plus how to
+ * phrase a correction. This is what we compare live-vs-reference. */
+const ANGLES = [
+  { key:"L_elbow",    a:LM.L_SHOULDER, b:LM.L_ELBOW,    c:LM.L_WRIST, part:"elbow",    side:"left"  },
+  { key:"R_elbow",    a:LM.R_SHOULDER, b:LM.R_ELBOW,    c:LM.R_WRIST, part:"elbow",    side:"right" },
+  { key:"L_shoulder", a:LM.L_ELBOW,    b:LM.L_SHOULDER, c:LM.L_HIP,   part:"shoulder", side:"left"  },
+  { key:"R_shoulder", a:LM.R_ELBOW,    b:LM.R_SHOULDER, c:LM.R_HIP,   part:"shoulder", side:"right" },
+  { key:"L_hip",      a:LM.L_SHOULDER, b:LM.L_HIP,      c:LM.L_KNEE,  part:"hip",      side:"left"  },
+  { key:"R_hip",      a:LM.R_SHOULDER, b:LM.R_HIP,      c:LM.R_KNEE,  part:"hip",      side:"right" },
+  { key:"L_knee",     a:LM.L_HIP,      b:LM.L_KNEE,     c:LM.L_ANKLE, part:"knee",     side:"left"  },
+  { key:"R_knee",     a:LM.R_HIP,      b:LM.R_KNEE,     c:LM.R_ANKLE, part:"knee",     side:"right" },
+];
+/* Weights: structure (torso/legs) matters more than exact arm angle in tai chi. */
+const ANGLE_W = { L_elbow:0.8, R_elbow:0.8, L_shoulder:1.1, R_shoulder:1.1,
+                  L_hip:1.2, R_hip:1.2, L_knee:1.2, R_knee:1.2, torso:1.4 };
+
+/* Landmarks kept for the normalised avatar (hip-centred, torso-scaled). */
+const AVATAR_LM = [LM.L_SHOULDER,LM.R_SHOULDER,LM.L_ELBOW,LM.R_ELBOW,LM.L_WRIST,LM.R_WRIST,
+                   LM.L_HIP,LM.R_HIP,LM.L_KNEE,LM.R_KNEE,LM.L_ANKLE,LM.R_ANKLE,LM.NOSE];
+
+// --- tuning --------------------------------------------------------------
+const CFG = {
+  MATCH_PERFECT_DEG: 8,     // per-angle error at/under which = perfect
+  MATCH_ZERO_DEG:    50,    // per-angle error at which = 0
+  HOLD_MATCH_MIN:    82,    // % match required to count as "in the posture"
+  HOLD_SECONDS:      3.0,   // seconds to hold before "achieved"
+  STILL_VEL:         0.010, // normalised motion/frame under which you're "still"
+  CUE_MIN_ERR_DEG:   12,    // don't nag about an angle closer than this
+  CUE_INTERVAL_MS:   2600,  // min gap between spoken cues
+  VIS_MIN:           0.4,   // landmark visibility floor
+};
+
+const LS_POSTURES = "still.postures.v1";
+
+// ---------------------------------------------------------------------------
+//  DOM
+// ---------------------------------------------------------------------------
+const video   = document.getElementById("video");
+const canvas  = document.getElementById("canvas");
+const ctx     = canvas.getContext("2d");
+const overlay = document.getElementById("overlay");
+const startBtn= document.getElementById("startBtn");
+const postureSel = document.getElementById("postureSel");
+const videoBtn = document.getElementById("videoBtn");
+const menuBtn = document.getElementById("menuBtn");
+const sheet   = document.getElementById("sheet");
+const scrim   = document.getElementById("scrim");
+const plist   = document.getElementById("plist");
+const captureBtn = document.getElementById("captureBtn");
+const voiceBtn = document.getElementById("voiceBtn");
+const resetBtn = document.getElementById("resetBtn");
+const clearBtn = document.getElementById("clearBtn");
+const cueEl   = document.getElementById("cue");
+const ringArc = document.getElementById("ringArc");
+const ringPct = document.getElementById("ringPct");
+const targetName = document.getElementById("targetName");
+const holdfill = document.getElementById("holdfill");
+const countdown = document.getElementById("countdown");
+
+// ---------------------------------------------------------------------------
+//  State
+// ---------------------------------------------------------------------------
+const S = {
+  poseLandmarker: null, stream: null, running: false,
+  facingMode: "user", showVideo: false, voice: true,
+  postures: [], targetIdx: 0,
+  live: null,            // last landmark array
+  prevCentroid: null,    // for velocity
+  vel: 1, holdT: 0, lastAchieved: -1,
+  match: 0, worst: null, capturing: false,
+};
+let lastVideoTime = -1, lastCueAt = 0, lastSpoken = "";
+
+// ---------------------------------------------------------------------------
+//  Math helpers
+// ---------------------------------------------------------------------------
+const isNum = (v) => typeof v === "number" && isFinite(v);
+function angleAt(A, B, C) {                     // degrees at B
+  const abx = A.x - B.x, aby = A.y - B.y, cbx = C.x - B.x, cby = C.y - B.y;
+  const dot = abx*cbx + aby*cby;
+  const m = Math.hypot(abx,aby) * Math.hypot(cbx,cby);
+  if (m < 1e-6) return NaN;
+  return Math.acos(Math.max(-1, Math.min(1, dot/m))) * 180/Math.PI;
+}
+function torsoLeanDeg(lm) {                      // lean of spine from vertical
+  const sx = (lm[LM.L_SHOULDER].x + lm[LM.R_SHOULDER].x)/2;
+  const sy = (lm[LM.L_SHOULDER].y + lm[LM.R_SHOULDER].y)/2;
+  const hx = (lm[LM.L_HIP].x + lm[LM.R_HIP].x)/2;
+  const hy = (lm[LM.L_HIP].y + lm[LM.R_HIP].y)/2;
+  return Math.atan2(sx - hx, hy - sy) * 180/Math.PI;   // 0 = perfectly upright
+}
+function visOK(lm) {
+  let need = [LM.L_SHOULDER,LM.R_SHOULDER,LM.L_HIP,LM.R_HIP,LM.L_KNEE,LM.R_KNEE];
+  return need.every((i) => lm[i] && (lm[i].visibility ?? 0) >= CFG.VIS_MIN);
+}
+
+/* Reduce a pose to its angle fingerprint + normalised avatar points. */
+function fingerprint(lm) {
+  const angles = {};
+  for (const A of ANGLES) {
+    const v = angleAt(lm[A.a], lm[A.b], lm[A.c]);
+    if (isNum(v)) angles[A.key] = v;
+  }
+  angles.torso = torsoLeanDeg(lm);
+  // Normalised avatar: hip-centre origin, scaled by torso length.
+  const hx = (lm[LM.L_HIP].x + lm[LM.R_HIP].x)/2;
+  const hy = (lm[LM.L_HIP].y + lm[LM.R_HIP].y)/2;
+  const sx = (lm[LM.L_SHOULDER].x + lm[LM.R_SHOULDER].x)/2;
+  const sy = (lm[LM.L_SHOULDER].y + lm[LM.R_SHOULDER].y)/2;
+  const scale = Math.hypot(sx-hx, sy-hy) || 0.2;
+  const pts = {};
+  for (const i of AVATAR_LM) {
+    const p = lm[i];
+    if (p && (p.visibility ?? 0) >= CFG.VIS_MIN) pts[i] = [(p.x-hx)/scale, (p.y-hy)/scale];
+  }
+  return { angles, pts };
+}
+
+/* Compare live fingerprint to a reference: returns {match 0..100, worst, errs}. */
+function comparePose(live, ref) {
+  let wsum = 0, esum = 0, minC = 1, worst = null, worstErr = 0;
+  for (const key in ref.angles) {
+    if (!(key in live.angles)) continue;
+    const err = Math.abs(live.angles[key] - ref.angles[key]);
+    const w = ANGLE_W[key] ?? 1;
+    // per-angle closeness 0..1
+    const c = Math.max(0, 1 - Math.max(0, err - CFG.MATCH_PERFECT_DEG) /
+                              (CFG.MATCH_ZERO_DEG - CFG.MATCH_PERFECT_DEG));
+    wsum += w; esum += w * c;
+    if (c < minC) minC = c;
+    if (err > worstErr && err > CFG.CUE_MIN_ERR_DEG) {
+      worstErr = err; worst = { key, err, live: live.angles[key], ref: ref.angles[key] };
+    }
+  }
+  // Blend the weighted mean with the WORST joint so one badly-off limb caps the
+  // score -- you can't "hold" a posture with an arm completely wrong.
+  const mean = wsum ? esum / wsum : 0;
+  const match = Math.round(100 * (0.65 * mean + 0.35 * minC));
+  return { match, worst };
+}
+
+/* Human cue for the worst-off angle. Uses the subject's own left/right. */
+function cueFor(worst) {
+  if (!worst) return { text: "Hold it steady", audio: "hold it steady" };
+  const meta = ANGLES.find((a) => a.key === worst.key);
+  const tooOpen = worst.live > worst.ref;      // live angle larger than target
+  const side = meta ? meta.side : "";
+  const part = worst.key === "torso" ? "torso" : (meta ? meta.part : "");
+  let t;
+  switch (part) {
+    case "elbow":    t = tooOpen ? `Bend your ${side} elbow`      : `Straighten your ${side} arm`; break;
+    case "shoulder": t = tooOpen ? `Lower your ${side} arm`       : `Raise your ${side} arm`; break;
+    case "hip":      t = tooOpen ? `Sink into your hips`          : `Fold a little more at the hips`; break;
+    case "knee":     t = tooOpen ? `Bend your ${side} knee, sink lower` : `Rise up on your ${side} leg`; break;
+    case "torso":    t = `Bring your back upright`; break;
+    default:         t = "Adjust your posture";
+  }
+  return { text: t, audio: t };
+}
+
+// ---------------------------------------------------------------------------
+//  MediaPipe load + camera  [lifted from GHOST]
+// ---------------------------------------------------------------------------
+function showOverlay(h, p) { overlay.querySelector("h2").textContent = h;
+  overlay.querySelector("p").textContent = p; overlay.classList.remove("hidden"); }
+function hideOverlay() { overlay.classList.add("hidden"); }
+
+async function loadModel() {
+  showOverlay("Loading the coach…", "Fetching the on-device pose model. First load can take a few seconds.");
+  let FilesetResolver, PoseLandmarker;
+  try { ({ FilesetResolver, PoseLandmarker } = await import(MP_BUNDLE)); }
+  catch (err) { showOverlay("Couldn't load the library",
+    "The pose library failed to download. Check your connection (or a content blocker) and reload."); throw err; }
+  let vision;
+  try { vision = await FilesetResolver.forVisionTasks(MP_WASM); }
+  catch (err) { showOverlay("Couldn't load the engine", "The runtime failed to initialise. Reload to retry."); throw err; }
+  const attempts = [
+    { delegate:"GPU", model:MODEL_FULL }, { delegate:"GPU", model:MODEL_LITE }, { delegate:"CPU", model:MODEL_LITE },
+  ];
+  let lastErr;
+  for (const a of attempts) {
+    try {
+      S.poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: a.model, delegate: a.delegate },
+        runningMode: "VIDEO", numPoses: 1,
+        minPoseDetectionConfidence: 0.5, minPosePresenceConfidence: 0.5, minTrackingConfidence: 0.5,
+      });
+      console.info(`PoseLandmarker ready (${a.delegate})`); return;
+    } catch (err) { lastErr = err; console.warn("init failed", a.delegate, err); }
+  }
+  showOverlay("Model failed to load", "Couldn't initialise the pose model on this device. Reload to retry.");
+  throw lastErr;
+}
+
+async function startCamera() {
+  stopTracks();
+  const constraints = { audio:false, video:{ facingMode:{ ideal:S.facingMode }, width:{ideal:1280}, height:{ideal:720} } };
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia(constraints); }
+  catch (err) {
+    if (err && (err.name==="NotAllowedError"||err.name==="SecurityError"))
+      showOverlay("Camera permission denied", "Allow camera access (padlock icon), then press Start again. Nothing is ever recorded.");
+    else if (err && err.name==="NotFoundError") showOverlay("No camera found", "No camera is available on this device.");
+    else if (location.protocol==="file:") showOverlay("Needs a local server", "Camera is blocked on file://. Serve the folder over http://localhost (see README).");
+    else showOverlay("Camera error", "Couldn't start the camera. " + (err && err.message ? err.message : ""));
+    throw err;
+  }
+  S.stream = stream;
+  const mirror = (S.facingMode === "user");
+  video.style.transform  = mirror ? "scaleX(-1)" : "none";
+  canvas.style.transform = mirror ? "scaleX(-1)" : "none";
+  video.srcObject = stream;
+  await video.play();
+  await new Promise((res) => { if (video.videoWidth) return res(); video.onloadedmetadata = () => res(); });
+  canvas.width = video.videoWidth || 1280;
+  canvas.height = video.videoHeight || 720;
+}
+function stopTracks() { if (S.stream) { S.stream.getTracks().forEach((t)=>t.stop()); S.stream = null; } }
+
+// ---------------------------------------------------------------------------
+//  Drawing -- neon frontal skeleton over a dusk stage
+// ---------------------------------------------------------------------------
+function drawBackdrop() {
+  const W = canvas.width, H = canvas.height;
+  const g = ctx.createRadialGradient(W/2, H*0.1, 0, W/2, H*0.1, H*1.1);
+  g.addColorStop(0, "#1b2740"); g.addColorStop(0.55, "#0c1220"); g.addColorStop(1, "#070a10");
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+}
+
+/* Draw a skeleton from a live-landmark array in screen space. flareSet =
+   set of landmark indices to flare (the off limb), col overrides. */
+function drawLiveSkeleton(lm, col, flareKeys) {
+  const W = canvas.width, H = canvas.height;
+  const R = Math.max(4, W/120);
+  const flareIdx = flareKeys || new Set();
+  for (const [a,b] of BONES) {
+    const pa = lm[a], pb = lm[b];
+    if (!pa || !pb || (pa.visibility??0)<CFG.VIS_MIN || (pb.visibility??0)<CFG.VIS_MIN) continue;
+    const hot = flareIdx.has(a) && flareIdx.has(b);
+    ctx.strokeStyle = hot ? "var(--amber)" : col.limb;
+    ctx.lineWidth = R * (hot ? 1.5 : 1.1); ctx.lineCap = "round";
+    ctx.shadowColor = hot ? "rgba(255,181,71,0.6)" : col.glow; ctx.shadowBlur = R*2.4;
+    ctx.beginPath(); ctx.moveTo(pa.x*W, pa.y*H); ctx.lineTo(pb.x*W, pb.y*H); ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+  for (const i of [LM.L_SHOULDER,LM.R_SHOULDER,LM.L_ELBOW,LM.R_ELBOW,LM.L_WRIST,LM.R_WRIST,
+                   LM.L_HIP,LM.R_HIP,LM.L_KNEE,LM.R_KNEE,LM.L_ANKLE,LM.R_ANKLE]) {
+    const p = lm[i]; if (!p || (p.visibility??0)<CFG.VIS_MIN) continue;
+    ctx.fillStyle = col.node; ctx.shadowColor = col.glow; ctx.shadowBlur = R*1.6;
+    ctx.beginPath(); ctx.arc(p.x*W, p.y*H, R*0.7, 0, 7); ctx.fill();
+  }
+  // head ring
+  const n = lm[LM.NOSE];
+  if (n && (n.visibility??0)>=CFG.VIS_MIN) {
+    ctx.strokeStyle = col.node; ctx.lineWidth = R*0.4;
+    ctx.beginPath(); ctx.arc(n.x*W, n.y*H, R*1.6, 0, 7); ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+}
+
+/* Draw the target posture ghost, aligned onto the live body (hip + torso
+   length), so it sits like a cartoon the user copies. */
+function drawTargetGhost(refPts, liveLm) {
+  const W = canvas.width, H = canvas.height;
+  const hx = (liveLm[LM.L_HIP].x + liveLm[LM.R_HIP].x)/2;
+  const hy = (liveLm[LM.L_HIP].y + liveLm[LM.R_HIP].y)/2;
+  const sx = (liveLm[LM.L_SHOULDER].x + liveLm[LM.R_SHOULDER].x)/2;
+  const sy = (liveLm[LM.L_SHOULDER].y + liveLm[LM.R_SHOULDER].y)/2;
+  const scale = Math.hypot(sx-hx, sy-hy) || 0.2;
+  const scr = (i) => refPts[i] ? [ (hx + refPts[i][0]*scale)*W, (hy + refPts[i][1]*scale)*H ] : null;
+  const R = Math.max(4, W/120);
+  ctx.save(); ctx.globalAlpha = 0.5;
+  for (const [a,b] of BONES) {
+    const pa = scr(a), pb = scr(b); if (!pa || !pb) continue;
+    ctx.strokeStyle = "rgba(120,230,220,0.55)"; ctx.lineWidth = R*0.9; ctx.lineCap="round";
+    ctx.setLineDash([R*1.2, R*1.2]);
+    ctx.beginPath(); ctx.moveTo(pa[0],pa[1]); ctx.lineTo(pb[0],pb[1]); ctx.stroke();
+  }
+  ctx.setLineDash([]); ctx.restore();
+}
+
+const COL_LIVE = { limb:"rgba(52,255,224,0.85)", glow:"rgba(40,200,190,0.5)", node:"rgba(200,255,250,0.9)" };
+const COL_GOOD = { limb:"rgba(52,255,224,1)",    glow:"rgba(52,255,224,0.7)", node:"#dffff9" };
+
+// ---------------------------------------------------------------------------
+//  Main loop
+// ---------------------------------------------------------------------------
+function loop() {
+  if (!S.running) return;
+  if (video.readyState >= 2 && video.currentTime !== lastVideoTime) {
+    lastVideoTime = video.currentTime;
+    let result;
+    try { result = S.poseLandmarker.detectForVideo(video, performance.now()); }
+    catch (err) { console.warn("detect", err); }
+    const poses = result && result.landmarks;
+    if (poses && poses.length && visOK(poses[0])) processPose(poses[0]);
+    else { S.live = null; drawBackdrop(); setCue("Step back — get your whole body in frame", ""); setMatch(null); }
+  }
+  requestAnimationFrame(loop);
+}
+
+function processPose(lm) {
+  S.live = lm;
+  // velocity (mean landmark motion vs last frame) -> "stillness"
+  let cx=0, cy=0, n=0;
+  for (const i of AVATAR_LM) { if (lm[i]) { cx+=lm[i].x; cy+=lm[i].y; n++; } }
+  cx/=n; cy/=n;
+  if (S.prevCentroid) S.vel = 0.6*S.vel + 0.4*Math.hypot(cx-S.prevCentroid[0], cy-S.prevCentroid[1]);
+  S.prevCentroid = [cx, cy];
+
+  drawBackdrop();
+  const ref = S.postures[S.targetIdx];
+  if (!ref) { drawLiveSkeleton(lm, COL_LIVE); setCue("No posture selected", ""); setMatch(null); return; }
+
+  const live = fingerprint(lm);
+  const { match, worst } = comparePose(live, ref.fp);
+  S.match = match; S.worst = worst;
+
+  const good = match >= CFG.HOLD_MATCH_MIN;
+  drawTargetGhost(ref.fp.pts, lm);
+  const flare = (!good && worst) ? flareKeysFor(worst.key) : null;
+  drawLiveSkeleton(lm, good ? COL_GOOD : COL_LIVE, flare);
+
+  setMatch(match);
+
+  // hold logic: still + good match -> accrue hold time
+  const still = S.vel < CFG.STILL_VEL;
+  if (good && still) {
+    S.holdT += 1/30;                     // ~frame time; good enough for a PoC
+    holdfill.style.width = Math.min(100, 100*S.holdT/CFG.HOLD_SECONDS) + "%";
+    if (S.holdT >= CFG.HOLD_SECONDS && S.lastAchieved !== S.targetIdx) {
+      S.lastAchieved = S.targetIdx;
+      setCue("Held — beautiful", "held — nice work", "good");
+      chime(); speak("Nice. Posture held.");
+    } else if (S.holdT < CFG.HOLD_SECONDS) {
+      setCue("Hold it… " + Math.ceil(CFG.HOLD_SECONDS - S.holdT) + "s", "", "hold");
+    }
+  } else {
+    S.holdT = Math.max(0, S.holdT - 2/30);
+    holdfill.style.width = Math.min(100, 100*S.holdT/CFG.HOLD_SECONDS) + "%";
+    if (good && !still) setCue("Settle and be still", "", "hold");
+    else {
+      const c = cueFor(worst);
+      setCue(c.text, c.audio);
+      if (S.targetIdx !== S.lastAchieved) S.lastAchieved = -1;
+    }
+  }
+}
+
+/* Which landmark indices to flare for a given angle key. */
+function flareKeysFor(key) {
+  const m = ANGLES.find((a)=>a.key===key);
+  if (!m) return new Set();
+  return new Set([m.a, m.b, m.c]);
+}
+
+// ---------------------------------------------------------------------------
+//  HUD updates
+// ---------------------------------------------------------------------------
+function setMatch(m) {
+  if (m == null) { ringPct.textContent = "—"; ringArc.style.strokeDashoffset = 264; return; }
+  ringPct.innerHTML = m + "<small>%</small>";
+  ringArc.style.strokeDashoffset = 264 * (1 - m/100);
+  ringArc.style.stroke = m >= CFG.HOLD_MATCH_MIN ? "var(--accent)" : (m >= 60 ? "var(--amber)" : "var(--red)");
+}
+function setCue(text, audio, cls) {
+  cueEl.textContent = text;
+  cueEl.className = cls || "";
+  if (audio && S.voice) {
+    const now = performance.now();
+    if (audio !== lastSpoken && now - lastCueAt > CFG.CUE_INTERVAL_MS) {
+      speak(audio); lastSpoken = audio; lastCueAt = now;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+//  Audio -- Web Speech API for cues, WebAudio chime for success
+// ---------------------------------------------------------------------------
+let _ac = null;
+function speak(t) {
+  if (!S.voice || !("speechSynthesis" in window)) return;
+  try {
+    const u = new SpeechSynthesisUtterance(t);
+    u.rate = 0.98; u.pitch = 1.0; u.volume = 0.9;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  } catch (_) {}
+}
+function chime() {
+  try {
+    _ac = _ac || new (window.AudioContext||window.webkitAudioContext)();
+    const t = _ac.currentTime;
+    [660, 990].forEach((f, i) => {
+      const o = _ac.createOscillator(), g = _ac.createGain();
+      o.frequency.value = f; o.type = "sine";
+      g.gain.setValueAtTime(0.0001, t + i*0.12);
+      g.gain.exponentialRampToValueAtTime(0.25, t + i*0.12 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + i*0.12 + 0.5);
+      o.connect(g); g.connect(_ac.destination); o.start(t + i*0.12); o.stop(t + i*0.12 + 0.5);
+    });
+  } catch (_) {}
+}
+
+// ---------------------------------------------------------------------------
+//  Posture library (localStorage -- numbers only)
+// ---------------------------------------------------------------------------
+function savePostures() { try { localStorage.setItem(LS_POSTURES, JSON.stringify(S.postures)); } catch(_){} }
+function loadPostures() {
+  try { const raw = localStorage.getItem(LS_POSTURES); if (raw) S.postures = JSON.parse(raw); } catch(_){}
+  if (!Array.isArray(S.postures) || !S.postures.length) S.postures = samplePostures();
+}
+/* Two synthetic sample postures so the app works before any capture. Angle
+   values are hand-set to plausible tai-chi-ish shapes; positions approximate a
+   frontal stance. Clearly flagged as samples — Dan captures real ones over them. */
+function samplePostures() {
+  // helper to build a symmetric-ish avatar (normalised hip-centred coords)
+  const stance = (kneeBend) => ({
+    [LM.L_SHOULDER]:[-0.55,-1], [LM.R_SHOULDER]:[0.55,-1],
+    [LM.L_HIP]:[-0.35,0], [LM.R_HIP]:[0.35,0],
+    [LM.L_KNEE]:[-0.45,1.1-kneeBend*0.1], [LM.R_KNEE]:[0.45,1.1-kneeBend*0.1],
+    [LM.L_ANKLE]:[-0.5,2.2-kneeBend*0.2], [LM.R_ANKLE]:[0.5,2.2-kneeBend*0.2],
+    [LM.NOSE]:[0,-1.7],
+  });
+  const wardOff = stance(2);
+  wardOff[LM.L_ELBOW]=[-0.7,-0.4]; wardOff[LM.L_WRIST]=[-0.2,-0.6];   // left arm rounded across
+  wardOff[LM.R_ELBOW]=[0.75,-0.6]; wardOff[LM.R_WRIST]=[0.55,-1.1];   // right hand up
+  const openArms = stance(1);
+  openArms[LM.L_ELBOW]=[-1.1,-1]; openArms[LM.L_WRIST]=[-1.6,-1];
+  openArms[LM.R_ELBOW]=[1.1,-1];  openArms[LM.R_WRIST]=[1.6,-1];
+  return [
+    { name:"Sample · Ward Off (left)", sample:true,
+      fp:{ angles:{ L_elbow:110, R_elbow:120, L_shoulder:55, R_shoulder:70, L_hip:150, R_hip:150, L_knee:150, R_knee:150, torso:0 }, pts:wardOff } },
+    { name:"Sample · Open Arms", sample:true,
+      fp:{ angles:{ L_elbow:160, R_elbow:160, L_shoulder:88, R_shoulder:88, L_hip:165, R_hip:165, L_knee:165, R_knee:165, torso:0 }, pts:openArms } },
+  ];
+}
+
+function renderPostureUI() {
+  postureSel.innerHTML = "";
+  S.postures.forEach((p, i) => {
+    const o = document.createElement("option"); o.value = i; o.textContent = p.name; postureSel.appendChild(o);
+  });
+  if (S.targetIdx >= S.postures.length) S.targetIdx = 0;
+  postureSel.value = S.targetIdx;
+  targetName.textContent = S.postures.length ? S.postures[S.targetIdx].name : "—";
+
+  plist.innerHTML = "";
+  S.postures.forEach((p, i) => {
+    const row = document.createElement("div"); row.className = "pitem";
+    row.innerHTML = `<span class="nm">${p.name}</span>` +
+      (p.sample ? `<span class="sm">sample</span>` : ``);
+    const use = document.createElement("button"); use.textContent = "Practise";
+    use.onclick = () => { S.targetIdx = i; S.holdT = 0; S.lastAchieved=-1; renderPostureUI(); closeSheet(); };
+    const del = document.createElement("button"); del.textContent = "✕";
+    del.onclick = () => { S.postures.splice(i,1); if(!S.postures.length) S.postures=samplePostures();
+      savePostures(); renderPostureUI(); };
+    row.appendChild(use); row.appendChild(del);
+    plist.appendChild(row);
+  });
+}
+
+// Capture: 3s countdown, then snapshot the current live pose as a reference.
+async function captureNew() {
+  if (!S.running || !S.live) { alert("Press Start and stand in frame first."); return; }
+  closeSheet();
+  for (let k=3;k>=1;k--){ countdown.textContent=k; countdown.classList.add("show"); speak(String(k)); await wait(1000); }
+  countdown.textContent="Hold"; await wait(400); countdown.classList.remove("show");
+  if (!S.live) return;
+  const fp = fingerprint(S.live);
+  const name = prompt("Name this posture", "My posture " + (S.postures.filter(p=>!p.sample).length+1));
+  if (name === null) return;
+  S.postures.push({ name: name || "Untitled", sample:false, fp });
+  S.targetIdx = S.postures.length - 1; S.holdT=0; S.lastAchieved=-1;
+  savePostures(); renderPostureUI();
+  chime(); speak("Captured. Now try to match it.");
+}
+const wait = (ms) => new Promise(r=>setTimeout(r,ms));
+
+// ---------------------------------------------------------------------------
+//  Lifecycle + controls
+// ---------------------------------------------------------------------------
+async function start() {
+  startBtn.disabled = true;
+  try { if (!S.poseLandmarker) await loadModel(); await startCamera(); }
+  catch { startBtn.disabled=false; startBtn.textContent="Start"; return; }
+  hideOverlay();
+  S.running = true; S.holdT = 0; S.lastAchieved = -1; S.prevCentroid = null;
+  startBtn.textContent = "Stop"; startBtn.classList.add("stop"); startBtn.disabled = false;
+  lastVideoTime = -1;
+  // unlock audio on the user gesture
+  try { _ac = _ac || new (window.AudioContext||window.webkitAudioContext)(); _ac.resume?.(); } catch(_){}
+  requestAnimationFrame(loop);
+}
+function stop() {
+  S.running = false; stopTracks(); video.pause(); video.srcObject = null;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  startBtn.textContent = "Start"; startBtn.classList.remove("stop");
+  holdfill.style.width = "0%"; setMatch(null);
+  showOverlay("Paused", "Camera off. Your postures are saved on this device. Press Start to go again.");
+}
+
+function openSheet(){ renderPostureUI(); sheet.classList.add("open"); scrim.classList.add("open"); }
+function closeSheet(){ sheet.classList.remove("open"); scrim.classList.remove("open"); }
+
+startBtn.addEventListener("click", () => S.running ? stop() : start());
+postureSel.addEventListener("change", () => { S.targetIdx = +postureSel.value; S.holdT=0; S.lastAchieved=-1;
+  targetName.textContent = S.postures[S.targetIdx].name; });
+videoBtn.addEventListener("click", () => { S.showVideo = !S.showVideo; video.classList.toggle("show", S.showVideo); });
+menuBtn.addEventListener("click", openSheet);
+scrim.addEventListener("click", closeSheet);
+captureBtn.addEventListener("click", captureNew);
+voiceBtn.addEventListener("click", () => { S.voice = !S.voice; voiceBtn.textContent = "Voice cues: " + (S.voice?"ON":"OFF"); });
+resetBtn.addEventListener("click", () => { S.postures = S.postures.filter(p=>!p.sample).concat(samplePostures());
+  savePostures(); renderPostureUI(); });
+clearBtn.addEventListener("click", () => { if(confirm("Delete all postures (including your captures)?")){
+  S.postures = samplePostures(); S.targetIdx=0; savePostures(); renderPostureUI(); } });
+
+// init
+loadPostures();
+renderPostureUI();
+</script>
+</body>
+</html>
