@@ -568,15 +568,26 @@ function getArt(ref){
 }
 function drawTargetArt(img, good, lm){
   const W = canvas.width, H = canvas.height;
-  const yOf = (i) => (lm[i] && (lm[i].visibility??0) >= CFG.VIS_MIN) ? lm[i].y*H : null;
-  const topY = yOf(LM.NOSE) ?? H*0.12;
-  const ankles = [yOf(LM.L_ANKLE), yOf(LM.R_ANKLE)].filter(v => v != null);
-  const botY = ankles.length ? Math.max(...ankles) : H*0.96;
-  const cxU = (lm[LM.L_HIP].x + lm[LM.R_HIP].x + lm[LM.L_SHOULDER].x + lm[LM.R_SHOULDER].x)/4 * W;
-  const drawH = Math.max(H*0.4, botY - topY) / 0.80;      // panda fills ~80% of its frame; match user height
+  // Default: master centred, near-full-height — shown even before a pose locks,
+  // so you always see who to copy. With a pose, scale + centre it onto you.
+  let cx = W/2, midY = H*0.5, drawH = H*0.92;
+  if (lm && lm[LM.L_HIP]) {
+    const yOf = (i) => (lm[i] && (lm[i].visibility??0) >= CFG.VIS_MIN) ? lm[i].y*H : null;
+    const topY = yOf(LM.NOSE) ?? H*0.12;
+    const ankles = [yOf(LM.L_ANKLE), yOf(LM.R_ANKLE)].filter(v => v != null);
+    const botY = ankles.length ? Math.max(...ankles) : H*0.96;
+    drawH = Math.max(H*0.55, botY - topY) / 0.80;         // panda fills ~80% of its frame; match user height
+    midY = (topY + botY)/2;
+    cx = (lm[LM.L_HIP].x + lm[LM.R_HIP].x + lm[LM.L_SHOULDER].x + lm[LM.R_SHOULDER].x)/4 * W;
+  }
   const s = drawH/img.naturalHeight, w = img.naturalWidth*s;
-  ctx.save(); ctx.globalAlpha = good ? 0.9 : 0.52;
-  ctx.drawImage(img, cxU - w/2, (topY+botY)/2 - drawH/2, w, drawH);
+  ctx.save();
+  // warm backing glow so the master reads off the dark ground
+  const g = ctx.createRadialGradient(cx, midY, 0, cx, midY, drawH*0.55);
+  g.addColorStop(0, "rgba(125,88,42,0.4)"); g.addColorStop(1, "rgba(125,88,42,0)");
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  ctx.globalAlpha = good ? 0.96 : 0.72;
+  ctx.drawImage(img, cx - w/2, midY - drawH/2, w, drawH);
   ctx.restore();
 }
 
@@ -625,7 +636,14 @@ function loop() {
     catch (err) { console.warn("detect", err); }
     const poses = result && result.landmarks;
     if (poses && poses.length && visOK(poses[0])) processPose(poses[0]);
-    else { S.live = null; drawBackdrop(); setCue("Step back — get your whole body in frame", ""); setMatch(null); }
+    else {
+      S.live = null; drawBackdrop();
+      const ref = S.postures[S.targetIdx]; const art = ref && getArt(ref);
+      if (art) drawTargetArt(art, false, null);        // show the master even before a pose locks
+      setCue(art ? "Copy the master — stand back so your whole body fits the frame"
+                 : "Step back — get your whole body in frame", "");
+      setMatch(null);
+    }
   }
   requestAnimationFrame(loop);
 }
