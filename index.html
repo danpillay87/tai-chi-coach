@@ -31,15 +31,19 @@
     --panel:   rgba(240,232,212,0.85);
     --line:    rgba(60,44,24,0.22);
   }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+  * { box-sizing: border-box; min-width: 0; }   /* min-width:0 => flex children always shrink, never force overflow */
+  html { height: 100%; overflow-x: hidden; }     /* hard stop: the page can never scroll sideways */
+  body { margin: 0; min-height: 100vh; min-height: 100dvh; overflow-x: hidden;
+    background: #17120a; color: var(--ink);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
-    -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
-  /* Mobile-first, but on desktop present as a centred portrait panel (this is a
-     stand-in-front-of-camera app — portrait is its natural shape) rather than a
-     stretched full-width band. Responsive, not a hard fixed width. */
-  body { display: flex; flex-direction: column; overflow-x: hidden;
-    width: min(100vw, 62vh); margin: 0 auto; box-shadow: 0 0 120px rgba(0,0,0,0.5); }
+    -webkit-tap-highlight-color: transparent; overscroll-behavior: none;
+    display: flex; justify-content: center; }
+  /* The app is a portrait column that fills the available height and centres on
+     wider screens. Fully fluid: width tracks height, never exceeds the viewport. */
+  #app { display: flex; flex-direction: column; width: 100%;
+    height: 100vh; height: 100dvh; max-width: min(100%, calc(100dvh * 0.56));
+    background: var(--bg); box-shadow: 0 0 100px rgba(0,0,0,0.5); }
+  canvas, video, img, svg { max-width: 100%; }   /* media never forces overflow */
 
   header { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px 6px; }
   header .logo { font-family: Georgia, "Times New Roman", serif; font-weight: 700; letter-spacing: 5px; font-size: 21px;
@@ -135,6 +139,7 @@
 </style>
 </head>
 <body>
+  <div id="app">
   <header>
     <span class="logo">STILL</span>
     <span class="tagline">move your ghost</span>
@@ -187,6 +192,7 @@
     <button id="menuBtn" class="icon" title="Postures &amp; settings">⋯</button>
   </div>
   <div class="privacy">On-device · frames never saved or uploaded · numbers only</div>
+  </div><!-- /#app -->
 
   <div id="scrim"></div>
   <div class="sheet" id="sheet">
