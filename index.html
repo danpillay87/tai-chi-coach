@@ -35,7 +35,7 @@
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
     -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
-  body { display: flex; flex-direction: column; }
+  body { display: flex; flex-direction: column; overflow-x: hidden; max-width: 100vw; }
 
   header { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px 6px; }
   header .logo { font-family: Georgia, "Times New Roman", serif; font-weight: 700; letter-spacing: 5px; font-size: 21px;
@@ -45,26 +45,28 @@
 
   #stage { position: relative; flex: 1; min-height: 0; margin: 4px 10px 0;
     border-radius: 18px; overflow: hidden; background:
-      radial-gradient(120% 90% at 50% 8%, #1b2740 0%, #0c1220 55%, #070a10 100%);
+      radial-gradient(120% 90% at 50% 8%, #2a1c0f 0%, #150d05 55%, #0d0703 100%);
     box-shadow: inset 0 0 0 1px var(--line), 0 10px 40px rgba(0,0,0,0.5); }
   #video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
     opacity: 0; transition: opacity .3s; }
-  #video.show { opacity: 0.28; }
+  #video.show { opacity: 0.12; }
   #canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 
   /* HUD */
-  #hud { position: absolute; inset: 0; pointer-events: none; padding: 14px;
+  #hud { position: absolute; inset: 0; pointer-events: none; padding: 16px 18px;
     display: flex; flex-direction: column; justify-content: space-between; }
   #topline { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
   #target { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-    padding: 8px 12px; max-width: 60%; }
+    padding: 8px 12px; max-width: calc(100% - 84px); }
   #target .lbl { font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
-  #target .name { font-size: 17px; font-weight: 700; margin-top: 2px; }
-  #ring { display: flex; flex-direction: column; align-items: center; }
-  #ringSvg { width: 76px; height: 76px; }
-  #ringPct { font-size: 20px; font-weight: 800; }
-  #ringPct small { font-size: 11px; font-weight: 600; color: var(--muted); }
-  #ringLbl { font-size: 9px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+  #target .name { font-size: 17px; font-weight: 700; margin-top: 2px; font-family: Georgia, "Times New Roman", serif; }
+  #ring { position: absolute; top: 16px; right: 18px; width: 56px; height: 56px; }
+  #ringSvg { width: 56px; height: 56px; display: block; }
+  #ringPct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  #ringPct small { font-size: 9px; font-weight: 600; color: var(--muted); }
+  #ringLbl { position: absolute; top: 100%; left: 0; right: 0; text-align: center; margin-top: 3px;
+    font-size: 8px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
 
   #cuewrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
   #cue { background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
@@ -82,17 +84,19 @@
   /* Controls */
   #controls { display: flex; gap: 10px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
     align-items: center; }
-  button { font: inherit; color: var(--ink); background: #16202e; border: 1px solid var(--line);
+  button { font: inherit; color: var(--ink); background: #241708; border: 1px solid var(--line);
     border-radius: 12px; padding: 12px 16px; font-weight: 650; cursor: pointer; min-height: 46px;
     transition: transform .05s, background .15s, border-color .15s; }
   button:active { transform: scale(0.97); }
   button:disabled { opacity: 0.4; cursor: default; }
   button.primary { flex: 1; background: linear-gradient(90deg, var(--accentd), var(--accent));
-    color: #04211d; border: none; font-weight: 800; letter-spacing: .5px; }
-  button.primary.stop { background: linear-gradient(90deg, #b23a3a, var(--red)); color: #fff; }
+    color: #2a1400; border: none; font-weight: 800; letter-spacing: .5px; }
+  button.primary.stop { background: none; border: 1px solid var(--line); color: var(--muted); font-weight: 650; }
   button.icon { min-width: 46px; padding: 12px; }
-  select { font: inherit; color: var(--ink); background: #16202e; border: 1px solid var(--line);
-    border-radius: 12px; padding: 12px; font-weight: 650; min-height: 46px; flex: 1; }
+  select { font: inherit; color: var(--ink); background: #241708; border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px; font-weight: 650; min-height: 46px; flex: 1 1 0; min-width: 0;
+    font-family: Georgia, "Times New Roman", serif; text-overflow: ellipsis; }
+  #controls button.primary { flex: 0 0 auto; }
 
   /* Overlay + sheet */
   #overlay { position: absolute; inset: 0; background: rgba(6,10,16,0.9); display: flex;
@@ -101,7 +105,7 @@
   #overlay.hidden { display: none; }
   #overlay h2 { margin: 0; font-size: 20px; }
   #overlay p { margin: 0; color: var(--muted); max-width: 30em; line-height: 1.5; font-size: 14px; }
-  #overlay code { background: #1b2836; padding: 2px 6px; border-radius: 6px; color: var(--accent); }
+  #overlay code { background: #2a1c0f; padding: 2px 6px; border-radius: 6px; color: var(--accent); }
 
   .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--bg2);
     border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; padding: 16px;
@@ -112,7 +116,7 @@
   .sheet p.note { color: var(--muted); font-size: 12px; margin: 0 0 14px; line-height: 1.5; }
   .sheet .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
   .plist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
-  .pitem { display: flex; align-items: center; gap: 10px; background: #16202e; border: 1px solid var(--line);
+  .pitem { display: flex; align-items: center; gap: 10px; background: #241708; border: 1px solid var(--line);
     border-radius: 10px; padding: 10px 12px; }
   .pitem .nm { flex: 1; font-weight: 650; }
   .pitem .sm { color: var(--muted); font-size: 12px; }
@@ -121,7 +125,7 @@
     pointer-events: none; transition: opacity .28s; }
   #scrim.open { opacity: 1; pointer-events: auto; }
   #countdown { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
-    font-size: 120px; font-weight: 900; color: var(--accent); text-shadow: 0 0 40px rgba(52,255,224,.6);
+    font-size: 120px; font-weight: 900; color: var(--accent); text-shadow: 0 0 40px rgba(231,163,63,.6);
     z-index: 8; }
   #countdown.show { display: flex; }
   .privacy { color: var(--muted); font-size: 11px; text-align: center; padding: 0 16px 6px; line-height: 1.4; }
@@ -146,7 +150,7 @@
         </div>
         <div id="ring">
           <svg id="ringSvg" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="9"/>
+            <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(210,170,110,0.14)" stroke-width="9"/>
             <circle id="ringArc" cx="50" cy="50" r="42" fill="none" stroke="var(--accent)" stroke-width="9"
               stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="264"
               transform="rotate(-90 50 50)"/>
@@ -507,8 +511,8 @@ function drawChiBody(lm, good, flareKeys) {
   const scx=(lm[11].x+lm[12].x)/2*W, scy=(lm[11].y+lm[12].y)/2*H;
   const hcx=(lm[23].x+lm[24].x)/2*W, hcy=(lm[23].y+lm[24].y)/2*H;
   const U = Math.hypot(scx-hcx, scy-hcy) || Math.max(40, W/10);
-  const ink   = good ? "#f2c766" : INK.cream;
-  const glowc = good ? "rgba(242,199,102,0.9)" : "rgba(232,178,92,0.7)";
+  const ink   = good ? "#b8863f" : INK.cream;                              // 'good' = deep gold-brown, not neon
+  const glowc = good ? "rgba(184,134,63,0.55)" : "rgba(150,110,60,0.4)";   // faint warm halo, not glow
   // A tapered, gently-bowed brush stroke from A→B (widths in px; bow = fraction of length).
   function stroke(ax,ay,bx,by,w0,w1,bow,col){
     const dx=bx-ax, dy=by-ay, len=Math.hypot(dx,dy)||1, nx=-dy/len, ny=dx/len;
@@ -528,17 +532,23 @@ function drawChiBody(lm, good, flareKeys) {
   const seg=(a,b,w0,w1,bow)=>{ if(!has(a)||!has(b))return; const A=P(a),B=P(b);
     const col=(flareIdx.has(a)&&flareIdx.has(b))?INK.flare:ink; stroke(A[0],A[1],B[0],B[1],w0*U,w1*U,bow,col); };
   ctx.save();
-  ctx.globalAlpha = 0.9;
-  ctx.shadowColor = glowc; ctx.shadowBlur = U*0.13;
-  if(has(11)&&has(12)&&has(23)&&has(24)) stroke(scx,scy,hcx,hcy,0.13*U,0.10*U,0,ink);   // spine
-  seg(11,12,0.05,0.05,0); seg(23,24,0.05,0.05,0);                                        // shoulders, hips
-  seg(11,13,0.075,0.052,0.05); seg(13,15,0.052,0.03,0.04);                               // left arm
-  seg(12,14,0.075,0.052,-0.05); seg(14,16,0.052,0.03,-0.04);                             // right arm
-  seg(23,25,0.095,0.068,0.03); seg(25,27,0.068,0.04,0.02);                               // left leg
-  seg(24,26,0.095,0.068,-0.03); seg(26,28,0.068,0.04,-0.02);                             // right leg
-  if(has(0)){ const n=P(0); const hr=(Math.hypot(n[0]-scx,n[1]-scy)*0.55)||U*0.32;       // head — open ensō ring
-    ctx.lineWidth=U*0.05; ctx.lineCap="round"; ctx.strokeStyle=ink;
-    ctx.beginPath(); ctx.arc(n[0], n[1]-hr*0.1, hr, Math.PI*0.2, Math.PI*1.95); ctx.stroke(); }
+  ctx.globalAlpha = 0.65;                                                  // translucent — master reads through
+  ctx.shadowColor = glowc; ctx.shadowBlur = U*0.045;                       // ink, not neon
+  if(has(11)&&has(12)&&has(23)&&has(24)) stroke(scx,scy,hcx,hcy,0.08*U,0.06*U,0,ink);   // spine (thin)
+  seg(11,12,0.035,0.035,0); seg(23,24,0.035,0.035,0);                                    // shoulders, hips
+  seg(11,13,0.045,0.03,0.05); seg(13,15,0.03,0.02,0.04);                                 // left arm
+  seg(12,14,0.045,0.03,-0.05); seg(14,16,0.03,0.02,-0.04);                               // right arm
+  seg(23,25,0.06,0.04,0.03); seg(25,27,0.04,0.028,0.02);                                 // left leg
+  seg(24,26,0.06,0.04,-0.03); seg(26,28,0.04,0.028,-0.02);                               // right leg
+  if(has(0)){ const n=P(0);                                                              // head — open ensō, floats above shoulders
+    const hr = Math.max(U*0.42, Math.hypot(n[0]-scx,n[1]-scy)*0.55);
+    const cy = n[1] - hr*0.55;
+    ctx.lineCap="round"; ctx.strokeStyle=ink;
+    // taper the ensō by drawing it in short arcs of decreasing width toward the gap
+    const a0=Math.PI*0.15, a1=Math.PI*1.78, STEP=(a1-a0)/10;
+    for(let s=0;s<10;s++){ ctx.lineWidth = U*(0.075 - 0.006*s);
+      ctx.beginPath(); ctx.arc(n[0], cy, hr, a0+s*STEP, a0+(s+1)*STEP+0.02); ctx.stroke(); }
+  }
   ctx.restore();
 }
 
@@ -556,7 +566,7 @@ function drawTargetGhost(refPts, liveLm) {
   ctx.save(); ctx.globalAlpha = 0.5;
   for (const [a,b] of BONES) {
     const pa = scr(a), pb = scr(b); if (!pa || !pb) continue;
-    ctx.strokeStyle = "rgba(196,232,206,0.5)"; ctx.lineWidth = R*0.9; ctx.lineCap="round";
+    ctx.strokeStyle = "rgba(210,170,110,0.5)"; ctx.lineWidth = R*0.9; ctx.lineCap="round";
     ctx.setLineDash([R*1.2, R*1.2]);
     ctx.beginPath(); ctx.moveTo(pa[0],pa[1]); ctx.lineTo(pb[0],pb[1]); ctx.stroke();
   }
@@ -588,11 +598,16 @@ function drawTargetArt(img, good, lm){
   }
   const s = drawH/img.naturalHeight, w = img.naturalWidth*s;
   ctx.save();
-  // warm backing glow so the master reads off the dark ground
-  const g = ctx.createRadialGradient(cx, midY, 0, cx, midY, drawH*0.55);
-  g.addColorStop(0, "rgba(125,88,42,0.4)"); g.addColorStop(1, "rgba(125,88,42,0)");
+  // soft warm halo behind the torso (not a full-frame wash) so the master lifts off the ground
+  const gy = midY - drawH*0.15;
+  const g = ctx.createRadialGradient(cx, gy, 0, cx, gy, drawH*0.44);
+  g.addColorStop(0, "rgba(125,88,42,0.22)"); g.addColorStop(1, "rgba(125,88,42,0)");
   ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-  ctx.globalAlpha = good ? 0.96 : 0.72;
+  // faint grounded shadow so he stands, not floats
+  const footY = midY + drawH*0.46;
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.beginPath(); ctx.ellipse(cx, footY, w*0.26, drawH*0.02, 0, 0, 7); ctx.fill();
+  ctx.globalAlpha = good ? 0.97 : 0.84;
   ctx.drawImage(img, cx - w/2, midY - drawH/2, w, drawH);
   ctx.restore();
 }
@@ -912,6 +927,7 @@ clearBtn.addEventListener("click", () => { if(confirm("Delete all postures (incl
 // init
 loadPostures();
 renderPostureUI();
+if (diagEl && !DEMO && !new URLSearchParams(location.search).has("debug")) diagEl.style.display = "none";  // dev-only status line
 if (DEMO) start();     // camera-less auto-run for testing / no-camera preview
 </script>
 </body>
