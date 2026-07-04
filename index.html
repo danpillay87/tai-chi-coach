@@ -631,6 +631,36 @@ function drawBurst(p, lm) {
 }
 
 // ---------------------------------------------------------------------------
+//  Demo mode (?demo) — camera-less. Feeds a synthetic pose that eases from a
+//  neutral stance into each posture and holds, so the whole experience (master,
+//  chi body, match, hold, burst) runs and can be smoke-tested without a camera.
+// ---------------------------------------------------------------------------
+const DEMO = new URLSearchParams(location.search).has("demo");
+const DEMO_NEUTRAL = {0:[0,-1.35],11:[0.32,-1.0],12:[-0.32,-1.0],13:[0.40,-0.5],14:[-0.40,-0.5],
+  15:[0.44,0.02],16:[-0.44,0.02],23:[0.24,0],24:[-0.24,0],25:[0.26,0.9],26:[-0.26,0.9],27:[0.28,1.8],28:[-0.28,1.8]};
+let _demoStart = 0;
+function demoPose(){
+  const ref = S.postures[S.targetIdx]; if(!ref||!ref.fp) return null;
+  const tgt = ref.fp.pts, cycle = 9000;
+  const el = (performance.now()-_demoStart) % cycle;
+  const k = (1 - Math.cos(Math.min(1, el/3000)*Math.PI))/2;      // ease neutral→target
+  const sway = Math.sin(performance.now()/700)*0.004;
+  const hipX=0.5, hipY=0.60, tl=0.17, lm=[];
+  for(const i of AVATAR_LM){
+    const a=DEMO_NEUTRAL[i]||[0,0], b=tgt[i]||a;
+    lm[i]={ x: hipX + (a[0]+(b[0]-a[0])*k)*tl + sway, y: hipY + (a[1]+(b[1]-a[1])*k)*tl, visibility: 1 };
+  }
+  return lm;
+}
+function demoLoop(){
+  if(!S.running) return;
+  const idx = (1 + Math.floor((performance.now()-_demoStart)/9000)) % S.postures.length;   // start on a posture that differs from neutral
+  if(idx!==S.targetIdx){ S.targetIdx=idx; S.holdT=0; S.lastAchieved=-1; if(postureSel)postureSel.value=idx; if(targetName)targetName.textContent=S.postures[idx].name; }
+  const lm=demoPose(); if(lm) processPose(lm);
+  requestAnimationFrame(demoLoop);
+}
+
+// ---------------------------------------------------------------------------
 //  Main loop
 // ---------------------------------------------------------------------------
 function loop() {
@@ -838,6 +868,12 @@ const wait = (ms) => new Promise(r=>setTimeout(r,ms));
 async function start() {
   startBtn.disabled = true;
   setDiag("loading model + camera…");
+  if (DEMO) {
+    hideOverlay(); S.running = true; S.holdT = 0; S.lastAchieved = -1; S.prevCentroid = null; S.burst = null;
+    startBtn.textContent = "Stop"; startBtn.classList.add("stop"); startBtn.disabled = false;
+    _demoStart = performance.now(); setDiag("demo mode · no camera");
+    requestAnimationFrame(demoLoop); return;
+  }
   try { if (!S.poseLandmarker) await loadModel(); await startCamera(); }
   catch { startBtn.disabled=false; startBtn.textContent="Start"; setDiag("start failed — see message"); return; }
   hideOverlay();
@@ -876,6 +912,7 @@ clearBtn.addEventListener("click", () => { if(confirm("Delete all postures (incl
 // init
 loadPostures();
 renderPostureUI();
+if (DEMO) start();     // camera-less auto-run for testing / no-camera preview
 </script>
 </body>
 </html>
