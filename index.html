@@ -35,7 +35,11 @@
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
     -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
-  body { display: flex; flex-direction: column; overflow-x: hidden; max-width: 100vw; }
+  /* Mobile-first, but on desktop present as a centred portrait panel (this is a
+     stand-in-front-of-camera app — portrait is its natural shape) rather than a
+     stretched full-width band. Responsive, not a hard fixed width. */
+  body { display: flex; flex-direction: column; overflow-x: hidden;
+    width: min(100vw, 62vh); margin: 0 auto; box-shadow: 0 0 120px rgba(0,0,0,0.5); }
 
   header { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px 6px; }
   header .logo { font-family: Georgia, "Times New Roman", serif; font-weight: 700; letter-spacing: 5px; font-size: 21px;
@@ -667,8 +671,17 @@ function demoPose(){
   }
   return lm;
 }
+/* Size the canvas backing store to its displayed size (×DPR, capped) so drawing
+   isn't stretched. Camera mode sizes to the video instead; this is for demo. */
+function sizeCanvasToStage(){
+  const r = canvas.getBoundingClientRect();
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.round(r.width*dpr), h = Math.round(r.height*dpr);
+  if (w && h && (canvas.width !== w || canvas.height !== h)) { canvas.width = w; canvas.height = h; }
+}
 function demoLoop(){
   if(!S.running) return;
+  sizeCanvasToStage();
   const idx = (1 + Math.floor((performance.now()-_demoStart)/9000)) % S.postures.length;   // start on a posture that differs from neutral
   if(idx!==S.targetIdx){ S.targetIdx=idx; S.holdT=0; S.lastAchieved=-1; if(postureSel)postureSel.value=idx; if(targetName)targetName.textContent=S.postures[idx].name; }
   const lm=demoPose(); if(lm) processPose(lm);
