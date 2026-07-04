@@ -1,0 +1,107 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+  html,body{margin:0;background:#3a2f1e;font-family:Georgia,serif}
+  .grid{display:flex;flex-wrap:wrap;gap:0}
+  .cell{width:360px;height:560px;position:relative}
+  .cell canvas{position:absolute;inset:0}
+  .lbl{position:absolute;left:10px;top:8px;font:600 12px/1 system-ui;letter-spacing:.1em;text-transform:uppercase;color:#5b4a2e;z-index:2}
+</style></head>
+<body>
+<div class="grid" id="grid"></div>
+<script>
+// A clear embrace-the-tree tai-chi pose (normalised 0..1 within a cell).
+const POSE = {
+  0:[0.50,0.15],                              // nose
+  11:[0.42,0.30], 12:[0.58,0.30],             // shoulders
+  13:[0.34,0.45], 14:[0.66,0.45],             // elbows
+  15:[0.44,0.55], 16:[0.56,0.55],             // wrists (rounded toward centre)
+  23:[0.45,0.57], 24:[0.55,0.57],             // hips
+  25:[0.41,0.75], 26:[0.59,0.75],             // knees
+  27:[0.39,0.93], 28:[0.61,0.93],             // ankles
+};
+const hash=(n)=>{const x=Math.sin(n*127.1)*43758.5453;return x-Math.floor(x);};
+
+// Continuous flowing tapered ribbon through a list of points (Catmull-Rom).
+function ribbon(ctx, pts, w0, w1, col, alpha, ragged){
+  const n=pts.length, S=16, samp=[];
+  for(let i=0;i<n-1;i++){
+    const p0=pts[Math.max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(n-1,i+2)];
+    for(let s=0;s<S;s++){const t=s/S,tt=t*t,ttt=tt*t;
+      samp.push([0.5*(2*p1[0]+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*tt+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*ttt),
+                 0.5*(2*p1[1]+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*tt+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*ttt)]);}
+  }
+  samp.push(pts[n-1]);
+  const M=samp.length,L=[],R=[];
+  for(let i=0;i<M;i++){
+    const a=samp[Math.max(0,i-1)],b=samp[Math.min(M-1,i+1)];
+    const tx=b[0]-a[0],ty=b[1]-a[1],tl=Math.hypot(tx,ty)||1,nx=-ty/tl,ny=tx/tl;
+    const tt=i/(M-1); const taper=Math.pow(1-tt,0.5);
+    let w=(w0*(1-tt)+w1*tt)*(0.35+0.75*taper);
+    if(ragged) w*=1+(hash(i*1.7)-0.5)*0.18;
+    L.push([samp[i][0]+nx*w/2,samp[i][1]+ny*w/2]);
+    R.push([samp[i][0]-nx*w/2,samp[i][1]-ny*w/2]);
+  }
+  ctx.globalAlpha=alpha;ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(L[0][0],L[0][1]);
+  for(const p of L)ctx.lineTo(p[0],p[1]);
+  for(let i=R.length-1;i>=0;i--)ctx.lineTo(R[i][0],R[i][1]);
+  ctx.closePath();ctx.fill();ctx.globalAlpha=1;
+}
+function enso(ctx,cx,cy,r,w,col,alpha){
+  ctx.strokeStyle=col;ctx.lineCap="round";
+  const a0=Math.PI*0.15,a1=Math.PI*1.8,ST=(a1-a0)/16;
+  for(let s=0;s<16;s++){const t=s/16;ctx.globalAlpha=alpha*(1-0.25*t);
+    ctx.lineWidth=w*(Math.pow(1-t,0.5)+0.12);
+    ctx.beginPath();ctx.arc(cx,cy,r+(hash(s*2.3)-0.5)*r*0.06,a0+s*ST,a0+(s+1)*ST+0.02);ctx.stroke();}
+  ctx.globalAlpha=1;
+}
+
+// Build a figure with a given treatment. U = body unit (shoulder-hip dist) in px.
+function figure(ctx, W, H, opt){
+  const P=i=>[POSE[i][0]*W, POSE[i][1]*H];
+  const sc=[(P(11)[0]+P(12)[0])/2,(P(11)[1]+P(12)[1])/2];
+  const hc=[(P(23)[0]+P(24)[0])/2,(P(23)[1]+P(24)[1])/2];
+  const U=Math.hypot(sc[0]-hc[0],sc[1]-hc[1]);
+  const ink=opt.ink, a=opt.alpha, sw=opt.scaleW||1;
+  const limb=(pts,w0,w1)=>{
+    w0*=sw; w1*=sw;
+    if(opt.halo) ribbon(ctx,pts,(w0+opt.halo)*U,(w1+opt.halo)*U,opt.haloCol,opt.haloA,false);
+    ribbon(ctx,pts,w0*U,w1*U,ink,a,opt.ragged);
+  };
+  // legs
+  limb([P(23),P(25),P(27)],0.16,0.07);
+  limb([P(24),P(26),P(28)],0.16,0.07);
+  // spine (hip centre -> shoulder centre)
+  limb([hc,sc],0.15,0.12);
+  // shoulders bar
+  limb([P(11),P(12)],0.09,0.09);
+  // arms (shoulder->elbow->wrist), continuous
+  limb([P(11),P(13),P(15)],0.12,0.05);
+  limb([P(12),P(14),P(16)],0.12,0.05);
+  // head — ensō floating above shoulders
+  const n=P(0), hr=Math.max(U*0.42, Math.hypot(n[0]-sc[0],n[1]-sc[1])*0.6), cy=n[1]-hr*0.3;
+  if(opt.halo) enso(ctx,n[0],cy,hr,opt.halo*U*2.0,opt.haloCol,opt.haloA);
+  enso(ctx,n[0],cy,hr,U*0.16,ink,a);
+}
+
+function parchment(ctx,W,H){
+  const g=ctx.createRadialGradient(W/2,H*0.3,0,W/2,H*0.3,H);
+  g.addColorStop(0,"#efe6d0");g.addColorStop(1,"#dccba4");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+}
+
+const TREATMENTS=[
+  {name:"A · thin charcoal", ink:"#2a2016", alpha:0.9, ragged:true},
+  {name:"B · flowing bold", ink:"#241a0e", alpha:0.95, ragged:true, scaleW:1.4},
+  {name:"C · charcoal + paper halo", ink:"#241a0e", alpha:0.95, ragged:true, halo:0.05, haloCol:"#efe6d0", haloA:0.95, scaleW:1.2},
+  {name:"D · soft grey ink", ink:"#4a3d2a", alpha:0.82, ragged:true, scaleW:1.15},
+];
+const grid=document.getElementById("grid");
+for(const t of TREATMENTS){
+  const cell=document.createElement("div");cell.className="cell";
+  cell.innerHTML=`<div class="lbl">${t.name}</div><canvas width="360" height="560"></canvas>`;
+  grid.appendChild(cell);
+  const ctx=cell.querySelector("canvas").getContext("2d");
+  parchment(ctx,360,560);
+  // apply optional global width scale by wrapping ribbon widths: simplest — pass scale via opt
+  figure(ctx,360,560,t);
+}
+</script>
+</body></html>

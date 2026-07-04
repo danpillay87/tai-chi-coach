@@ -1,0 +1,89 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+  html,body{margin:0;background:#2a2118;font-family:Georgia,serif}
+  .grid{display:flex;flex-wrap:wrap}
+  .cell{width:380px;height:600px;position:relative}
+  .cell canvas{position:absolute;inset:0}
+  .lbl{position:absolute;left:12px;top:10px;font:600 12px/1.3 system-ui;letter-spacing:.08em;text-transform:uppercase;color:#6b5836;z-index:3;width:200px}
+</style></head>
+<body>
+<div class="grid" id="grid"></div>
+<script>
+// Arms-up "hold up the heavens" pose to sit over panda_heavens.png
+const POSE={0:[0.50,0.16],11:[0.43,0.31],12:[0.57,0.31],13:[0.40,0.21],14:[0.60,0.21],
+  15:[0.45,0.10],16:[0.55,0.10],23:[0.46,0.55],24:[0.54,0.55],25:[0.44,0.73],26:[0.56,0.73],27:[0.43,0.92],28:[0.57,0.92]};
+const hash=(n)=>{const x=Math.sin(n*127.1)*43758.5453;return x-Math.floor(x);};
+
+function ribbon(ctx,pts,w0,w1,col,alpha){
+  const n=pts.length,S=16,samp=[];
+  for(let i=0;i<n-1;i++){const p0=pts[Math.max(0,i-1)],p1=pts[i],p2=pts[i+1],p3=pts[Math.min(n-1,i+2)];
+    for(let s=0;s<S;s++){const t=s/S,tt=t*t,ttt=tt*t;
+      samp.push([0.5*(2*p1[0]+(-p0[0]+p2[0])*t+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*tt+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*ttt),
+                 0.5*(2*p1[1]+(-p0[1]+p2[1])*t+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*tt+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*ttt)]);}}
+  samp.push(pts[n-1]);const M=samp.length,L=[],R=[];
+  for(let i=0;i<M;i++){const a=samp[Math.max(0,i-1)],b=samp[Math.min(M-1,i+1)];
+    const tx=b[0]-a[0],ty=b[1]-a[1],tl=Math.hypot(tx,ty)||1,nx=-ty/tl,ny=tx/tl,tt=i/(M-1),taper=Math.pow(1-tt,0.5);
+    const w=(w0*(1-tt)+w1*tt)*(0.4+0.7*taper);
+    L.push([samp[i][0]+nx*w/2,samp[i][1]+ny*w/2]);R.push([samp[i][0]-nx*w/2,samp[i][1]-ny*w/2]);}
+  ctx.globalAlpha=alpha;ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(L[0][0],L[0][1]);
+  for(const p of L)ctx.lineTo(p[0],p[1]);for(let i=R.length-1;i>=0;i--)ctx.lineTo(R[i][0],R[i][1]);ctx.closePath();ctx.fill();ctx.globalAlpha=1;
+}
+function pj(P,i){return [P[i][0],P[i][1]];}
+
+// CONCEPT 1: single flowing gesture — arms as ONE sweep, spine, two legs. Few strokes.
+function gesture(ctx,W,H,U,P){
+  const col="#2c2116",a=0.8;
+  ribbon(ctx,[P(15),P(13),P(11),P(12),P(14),P(16)],U*0.07,U*0.07,col,a); // one arm sweep across
+  ribbon(ctx,[[(P(11)[0]+P(12)[0])/2,(P(11)[1]+P(12)[1])/2],[(P(23)[0]+P(24)[0])/2,(P(23)[1]+P(24)[1])/2]],U*0.11,U*0.09,col,a); // spine
+  ribbon(ctx,[P(23),P(25),P(27)],U*0.11,U*0.05,col,a);
+  ribbon(ctx,[P(24),P(26),P(28)],U*0.11,U*0.05,col,a);
+}
+// CONCEPT 2: ink brush-dots at joints + delicate hairline connectors
+function dots(ctx,W,H,U,P){
+  const bones=[[11,12],[11,23],[12,24],[23,24],[11,13],[13,15],[12,14],[14,16],[23,25],[25,27],[24,26],[26,28]];
+  ctx.strokeStyle="rgba(60,48,30,0.55)";ctx.lineWidth=Math.max(1.5,U*0.02);ctx.lineCap="round";
+  for(const[a,b]of bones){ctx.beginPath();ctx.moveTo(P(a)[0],P(a)[1]);ctx.lineTo(P(b)[0],P(b)[1]);ctx.stroke();}
+  for(const i of [11,12,13,14,15,16,23,24,25,26,27,28]){const p=P(i);
+    ctx.fillStyle="#2c2116";ctx.beginPath();ctx.arc(p[0],p[1],U*0.05,0,7);ctx.fill();
+    ctx.fillStyle="rgba(44,33,22,0.35)";ctx.beginPath();ctx.arc(p[0],p[1],U*0.09,0,7);ctx.fill();}
+}
+// CONCEPT 3: fine contour outline (stroked limbs, not filled) — light life-drawing feel
+function contour(ctx,W,H,U,P){
+  ctx.strokeStyle="rgba(44,33,22,0.75)";ctx.lineWidth=Math.max(2,U*0.035);ctx.lineCap="round";ctx.lineJoin="round";
+  const path=(pts)=>{ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke();};
+  path([P(15),P(13),P(11),P(12),P(14),P(16)]);
+  path([[(P(11)[0]+P(12)[0])/2,(P(11)[1]+P(12)[1])/2],[(P(23)[0]+P(24)[0])/2,(P(23)[1]+P(24)[1])/2]]);
+  path([P(23),P(24)]);
+  path([P(23),P(25),P(27)]);path([P(24),P(26),P(28)]);
+}
+function enso(ctx,P,U,col,a,w){const sc=[(P(11)[0]+P(12)[0])/2,(P(11)[1]+P(12)[1])/2];const n=P(0);
+  const hr=Math.max(U*0.4,Math.hypot(n[0]-sc[0],n[1]-sc[1])*0.7),cy=n[1]-hr*0.2;
+  ctx.strokeStyle=col;ctx.lineCap="round";const a0=Math.PI*0.2,a1=Math.PI*1.8,ST=(a1-a0)/14;
+  for(let s=0;s<14;s++){const t=s/14;ctx.globalAlpha=a*(1-0.3*t);ctx.lineWidth=w*(Math.pow(1-t,0.5)+0.15);
+    ctx.beginPath();ctx.arc(n[0],cy,hr,a0+s*ST,a0+(s+1)*ST+0.02);ctx.stroke();}ctx.globalAlpha=1;}
+
+const CELLS=[
+  {name:"1 · gesture (few flowing strokes)",fn:gesture,ensoW:0.13},
+  {name:"2 · ink dots + hairlines",fn:dots,ensoW:0.10},
+  {name:"3 · fine contour outline",fn:contour,ensoW:0.09},
+];
+const grid=document.getElementById("grid");
+const panda=new Image();
+panda.onload=()=>{
+  for(const c of CELLS){
+    const cell=document.createElement("div");cell.className="cell";
+    cell.innerHTML=`<div class="lbl">${c.name}</div><canvas width="380" height="600"></canvas>`;
+    grid.appendChild(cell);
+    const ctx=cell.querySelector("canvas").getContext("2d"),W=380,H=600;
+    const g=ctx.createRadialGradient(W/2,H*0.3,0,W/2,H*0.3,H);g.addColorStop(0,"#efe6d0");g.addColorStop(1,"#dccba4");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    // panda master (scaled to ~90% height, centred)
+    const th=H*0.94,s=th/panda.naturalHeight,w=panda.naturalWidth*s;ctx.globalAlpha=0.92;ctx.drawImage(panda,(W-w)/2,(H-th)/2,w,th);ctx.globalAlpha=1;
+    const P=i=>[POSE[i][0]*W,POSE[i][1]*H];
+    const sc=[(P(11)[0]+P(12)[0])/2,(P(11)[1]+P(12)[1])/2],hc=[(P(23)[0]+P(24)[0])/2,(P(23)[1]+P(24)[1])/2];
+    const U=Math.hypot(sc[0]-hc[0],sc[1]-hc[1]);
+    c.fn(ctx,W,H,U,P);
+    enso(ctx,P,U,c.name[0]==="2"?"rgba(44,33,22,0.7)":"#2c2116",0.8,U*c.ensoW);
+  }
+};
+panda.src="art/panda_heavens.png";
+</script>
+</body></html>
