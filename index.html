@@ -34,15 +34,14 @@
   * { box-sizing: border-box; min-width: 0; }   /* min-width:0 => flex children always shrink, never force overflow */
   html { height: 100%; overflow-x: hidden; }     /* hard stop: the page can never scroll sideways */
   body { margin: 0; min-height: 100vh; min-height: 100dvh; overflow-x: hidden;
-    background: #17120a; color: var(--ink);
+    background: var(--bg); color: var(--ink);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
     -webkit-tap-highlight-color: transparent; overscroll-behavior: none;
     display: flex; justify-content: center; }
-  /* The app is a portrait column that fills the available height and centres on
-     wider screens. Fully fluid: width tracks height, never exceeds the viewport. */
+  /* Full-bleed parchment: the app fills the whole window; the master centres
+     within it (it scales to height, so it stays large on wide screens). */
   #app { display: flex; flex-direction: column; width: 100%;
-    height: 100vh; height: 100dvh; max-width: min(100%, calc(100dvh * 0.56));
-    background: var(--bg); box-shadow: 0 0 100px rgba(0,0,0,0.5); }
+    height: 100vh; height: 100dvh; background: transparent; }
   canvas, video, img, svg { max-width: 100%; }   /* media never forces overflow */
 
   header { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px 6px; }
@@ -50,10 +49,8 @@
     color: var(--ink); }
   header .tagline { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
 
-  #stage { position: relative; flex: 1; min-height: 0; margin: 4px 10px 0;
-    border-radius: 18px; overflow: hidden; background:
-      radial-gradient(120% 90% at 50% 10%, #efe6d0 0%, #e7dabd 58%, #d6c6a1 100%);
-    box-shadow: inset 0 0 0 1px var(--line), 0 10px 40px rgba(60,44,24,0.28); }
+  #stage { position: relative; flex: 1; min-height: 0; overflow: hidden; background:
+      radial-gradient(120% 90% at 50% 10%, #efe6d0 0%, #e7dabd 58%, #d6c6a1 100%); }
   #video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
     opacity: 0; transition: opacity .3s; }
   #video.show { opacity: 0.12; }
