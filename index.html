@@ -77,6 +77,10 @@
     @keyframes breathe { 0%,100% { transform: scale(0.82); opacity:.6 } 50% { transform: scale(1.1); opacity:1 } }
   }
   #cue { transition: color .3s ease, opacity .5s ease; }
+  #soundhint { position: fixed; bottom: 82px; left: 50%; transform: translateX(-50%); z-index: 30;
+    background: rgba(35,25,14,0.72); color: #f3ecd9; font: 600 12px/1 system-ui; letter-spacing: .05em;
+    padding: 9px 16px; border-radius: 20px; opacity: 0; transition: opacity .6s ease; pointer-events: none; }
+  #soundhint.show { opacity: 0.92; }
 
   #cuewrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
   #cue { background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
@@ -189,10 +193,12 @@
   <div id="controls">
     <button id="startBtn" class="primary">Start</button>
     <select id="postureSel" title="Choose the posture to practise"></select>
-    <button id="videoBtn" class="icon" title="Show/hide the camera feed">👁</button>
+    <button id="videoBtn" class="icon" title="Music on/off">🔊</button>
     <button id="menuBtn" class="icon" title="Postures &amp; settings">⋯</button>
   </div>
-  <div class="privacy">On-device · frames never saved or uploaded · numbers only</div>
+  <div class="privacy">A quiet moment · move slowly · breathe</div>
+  <audio id="bgm" src="audio/ambient.mp3" loop preload="auto"></audio>
+  <div id="soundhint">tap anywhere for sound</div>
   </div><!-- /#app -->
 
   <div id="scrim"></div>
@@ -307,8 +313,26 @@ const targetName = document.getElementById("targetName");
 const holdfill = document.getElementById("holdfill");
 const countdown = document.getElementById("countdown");
 const diagEl = document.getElementById("diag");
-const VERSION = "v0.3";
+const VERSION = "v0.5";
 function setDiag(t){ if (diagEl) diagEl.textContent = VERSION + " · " + t; }
+
+// --- background music -------------------------------------------------------
+const bgm = document.getElementById("bgm");
+const soundhint = document.getElementById("soundhint");
+let _musicOn = true;
+function startMusic(){
+  if (!_musicOn || !bgm) return;
+  bgm.volume = 0.5;
+  bgm.play().then(() => soundhint.classList.remove("show"))
+            .catch(() => { if (_musicOn) soundhint.classList.add("show"); });   // autoplay blocked → prompt a tap
+}
+// First interaction anywhere unlocks audio (music + chime + voice).
+function _unlockAudio(){
+  try { _ac = _ac || new (window.AudioContext||window.webkitAudioContext)(); _ac.resume?.(); } catch(_){}
+  startMusic();
+  soundhint.classList.remove("show");
+}
+["pointerdown","touchstart","keydown"].forEach(ev => window.addEventListener(ev, _unlockAudio, { once:true, passive:true }));
 
 // ---------------------------------------------------------------------------
 //  State
@@ -964,6 +988,7 @@ async function start() {
   guide = { idx: S.targetIdx || 0 };
   startBtn.textContent = "Pause"; startBtn.classList.add("stop");
   try { _ac = _ac || new (window.AudioContext||window.webkitAudioContext)(); _ac.resume?.(); } catch(_){}
+  startMusic();
   gotoPosture(guide.idx);
   requestAnimationFrame(guidedLoop);
 }
@@ -971,7 +996,8 @@ function stop() {
   S.running = false;
   ctx.clearRect(0,0,canvas.width,canvas.height);
   startBtn.textContent = "Start"; startBtn.classList.remove("stop");
-  setRing(0);
+  setRing(0); ring.classList.remove("breathing");
+  if (bgm) bgm.pause();
   showOverlay("Paused", "Take a breath. Press Start when you're ready to flow on.");
 }
 
@@ -982,7 +1008,11 @@ startBtn.addEventListener("click", () => S.running ? stop() : start());
 postureSel.addEventListener("change", () => { S.targetIdx = +postureSel.value;
   targetName.textContent = S.postures[S.targetIdx].name;
   if (S.running && guide) gotoPosture(S.targetIdx); });
-videoBtn.style.display = "none";   // no camera in this mode
+videoBtn.addEventListener("click", () => {   // repurposed: music on/off
+  _musicOn = !_musicOn;
+  videoBtn.textContent = _musicOn ? "🔊" : "🔇";
+  if (_musicOn) startMusic(); else bgm.pause();
+});
 menuBtn.addEventListener("click", openSheet);
 scrim.addEventListener("click", closeSheet);
 captureBtn.addEventListener("click", captureNew);
@@ -996,7 +1026,7 @@ clearBtn.addEventListener("click", () => { if(confirm("Delete all postures (incl
 loadPostures();
 renderPostureUI();
 if (diagEl && !DEMO && !new URLSearchParams(location.search).has("debug")) diagEl.style.display = "none";  // dev-only status line
-if (DEMO) start();     // camera-less auto-run for testing / no-camera preview
+start();     // auto-start the guided flow on load (music unlocks on first tap)
 </script>
 </body>
 </html>
