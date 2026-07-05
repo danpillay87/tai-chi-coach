@@ -636,9 +636,11 @@ function getArt(ref){
   if(!ref._img){ const im = new Image(); im.src = ref.art; ref._img = im; }
   return (ref._img.complete && ref._img.naturalWidth) ? ref._img : null;
 }
-function drawTargetArt(img, good, lm, fade){
+function drawTargetArt(img, good, lm, opt){
   const W = canvas.width, H = canvas.height;
-  fade = (fade == null) ? 1 : Math.max(0, Math.min(1, fade));
+  opt = (typeof opt === "number") ? { fade: opt } : (opt || {});
+  const fade = opt.fade == null ? 1 : Math.max(0, Math.min(1, opt.fade));
+  const sc = opt.scale == null ? 1 : opt.scale, dx = (opt.dx||0)*W, dy = (opt.dy||0)*H;
   // Master presence: big, centred, standing on the hill line.
   let cx = W/2, midY = H*0.50, drawH = H*0.98;
   if (lm && lm[LM.L_HIP]) {
@@ -651,15 +653,15 @@ function drawTargetArt(img, good, lm, fade){
     cx = (lm[LM.L_HIP].x + lm[LM.R_HIP].x + lm[LM.L_SHOULDER].x + lm[LM.R_SHOULDER].x)/4 * W;
   }
   const s = drawH/img.naturalHeight, w = img.naturalWidth*s;
-  const footY = midY + drawH*0.47;
+  const breath = good && !_reduceMotion ? Math.sin(performance.now()/2400)*0.008 : 0;
   ctx.save();
+  ctx.translate(cx + dx, midY + dy); ctx.scale(sc, sc);
   // soft grounded ink shadow so he stands, not floats
   ctx.globalAlpha = 0.2 * fade; ctx.fillStyle = "rgba(60,44,24,1)";
-  ctx.beginPath(); ctx.ellipse(cx, footY, w*0.22, drawH*0.016, 0, 0, 7); ctx.fill();
-  // a gentle breath: master eases up ~1% and back on the breath cycle while holding
-  const breath = good && !_reduceMotion ? Math.sin(performance.now()/2400)*0.008 : 0;
+  ctx.beginPath(); ctx.ellipse(0, drawH*0.47, w*0.22, drawH*0.016, 0, 0, 7); ctx.fill();
+  // gentle breath-lift while holding
   ctx.globalAlpha = (good ? 1 : 0.94) * fade;
-  ctx.drawImage(img, cx - w/2, midY - drawH/2 - drawH*breath, w, drawH);
+  ctx.drawImage(img, -w/2, -drawH/2 - drawH*breath, w, drawH);
   ctx.restore();
 }
 
@@ -951,8 +953,11 @@ function setRing(frac, done){
   ringArc.style.stroke = done ? "var(--accent)" : "var(--muted)";
   ringPct.innerHTML = "";                                // wordless progress
 }
+const G_TRANS = 1500;   // ms of "movement" between postures
 function gotoPosture(i){
+  const from = guide.idx;
   guide.idx = (i + S.postures.length) % S.postures.length;
+  guide.prevIdx = (from === guide.idx) ? null : from;   // null on the very first / same posture
   S.targetIdx = guide.idx; guide.phase = "enter"; guide.t0 = performance.now(); S.burst = null;
   if (postureSel) postureSel.value = guide.idx;
   if (targetName) targetName.textContent = S.postures[guide.idx].name;
@@ -963,19 +968,25 @@ function guidedLoop(){
   const ref = S.postures[guide.idx];
   sizeCanvasToStage();
   drawBackdrop();
-  // smooth master transitions: fade in on entry, fade out as the seal completes
-  let fade = 1;
-  if (guide.phase === "enter") fade = Math.min(1, el/700);
-  else if (guide.phase === "seal") fade = 1 - Math.max(0, (el - (G_SEAL-600))/600);
-  if (ref) { const art = getArt(ref); if (art) drawTargetArt(art, guide.phase === "hold" || guide.phase === "seal", null, fade); }
   ring.classList.toggle("breathing", guide.phase === "hold");
+  const art = ref ? getArt(ref) : null;
   if (guide.phase === "enter") {
+    // MOVEMENT between poses: old posture eases out (rises + scales, dissolving),
+    // new posture rises and settles in — a soft morph-in-motion, not a flat fade.
+    const tt = Math.min(1, el / G_TRANS), e = tt*tt*(3 - 2*tt);   // smoothstep
+    const prev = (guide.prevIdx != null) ? getArt(S.postures[guide.prevIdx]) : null;
+    if (prev && tt < 1) drawTargetArt(prev, false, null, { fade: (1-e)*0.9, scale: 1 + 0.07*e, dy: -0.03*e });
+    if (art) drawTargetArt(art, false, null, prev
+      ? { fade: e, scale: 0.92 + 0.08*e, dy: 0.05*(1-e) }
+      : { fade: Math.min(1, el/700) });
     setCue("Move gently into the posture", "", ""); setRing(0);
     if (el >= G_ENTER) { guide.phase = "hold"; guide.t0 = now; }
   } else if (guide.phase === "hold") {
+    if (art) drawTargetArt(art, true, null, 1);
     setRing(el / G_HOLD); setCue("Hold — and breathe", "", "hold");
     if (el >= G_HOLD) { guide.phase = "seal"; guide.t0 = now; S.burst = now; chime(); speak("Held. Beautiful."); }
   } else {
+    if (art) drawTargetArt(art, true, null, 1 - Math.max(0, (el - (G_SEAL-500))/500));
     setRing(1, true); setCue("Held — beautiful", "", "good");
     if (el >= G_SEAL) gotoPosture(guide.idx + 1);
   }
